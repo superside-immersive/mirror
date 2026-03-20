@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AMC Interactive Mirror — Albertsons Media Collective</title>
+
+  <!-- Google Fonts: Inter — clean, premium corporate typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Brand Design Tokens + UI Styles -->
+  <link rel="stylesheet" href="css/brand-tokens.css">
+  <link rel="stylesheet" href="css/ui-styles.css">
+
+  <!-- Tailwind CSS (utility layer) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            amc: {
+              blue:    '#003E7E',
+              navy:    '#001A36',
+              cyan:    '#00A4E4',
+              red:     '#E1251B',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
+      }
+    }
+  </script>
+
+  <!-- GSAP Animation Engine -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+</head>
+
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════
+       LOADING OVERLAY
+       ═══════════════════════════════════════════════════════ -->
+  <div id="loading">
+    <!-- Official AMC logo -->
+    <img class="loading-logo loading-logo-official" src="assets/amc-logo.svg" alt="Albertsons Media Collective logo">
+    <div class="loading-spinner"></div>
+    <div id="loading-text">Initializing...</div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       FPS COUNTER
+       ═══════════════════════════════════════════════════════ -->
+  <div id="fps"></div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       HIDDEN WEBCAM
+       ═══════════════════════════════════════════════════════ -->
+  <video id="webcam" autoplay playsinline></video>
+
+  <!-- ═══════════════════════════════════════════════════════
+       BACKGROUND STATE LAYER (CSS gradient transitions)
+       Three.js canvas is behind this; this adds the phase-
+       dependent color overlays as a semi-transparent layer.
+       ═══════════════════════════════════════════════════════ -->
+  <div id="mock-3d-canvas" class="bg-idle" style="position:fixed;inset:0;z-index:1;pointer-events:none;opacity:0.35;background-size:400% 400%;"></div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       DATA SCAN TRANSITION OVERLAY
+       ═══════════════════════════════════════════════════════ -->
+  <div id="data-transition-overlay">
+    <div class="scan-line" id="scan-line"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       UI OVERLAY LAYER
+       ═══════════════════════════════════════════════════════ -->
+  <div id="ui-layer">
+
+    <!-- AMC BRAND HEADER -->
+    <div class="brand-header">
+      <img class="brand-header-logo brand-header-logo-official" src="assets/amc-logo.svg" alt="Albertsons Media Collective logo">
+    </div>
+
+    <!-- FLOATING BRAND LOGOS -->
+    <div id="brands-container" class="interactive">
+      <div class="brand-logo-container" id="logo-a">
+        <div class="data-ring"></div>
+        <div class="brand-logo brand-a" data-brand="white">
+          <span class="logo-label">BRAND A</span>
+        </div>
+      </div>
+      <div class="brand-logo-container" id="logo-b">
+        <div class="data-ring"></div>
+        <div class="brand-logo brand-b" data-brand="black">
+          <span class="logo-label">BRAND B</span>
+        </div>
+      </div>
+      <div class="brand-logo-container" id="logo-c">
+        <div class="data-ring"></div>
+        <div class="brand-logo brand-c" data-brand="blue">
+          <span class="logo-label">BRAND C</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN HERO COPY -->
+    <div id="copy-container">
+      <h1 id="main-headline"></h1>
+      <hr class="headline-rule">
+      <p id="sub-headline"></p>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       DEVELOPER CONTROLS (visible with ?debug in URL)
+       ═══════════════════════════════════════════════════════ -->
+  <div id="dev-controls">
+    <span class="dev-label">Scene:</span>
+    <button class="dev-btn" data-phase="1">1. IDLE</button>
+    <button class="dev-btn" data-phase="2">2. CHAOS</button>
+    <button class="dev-btn" data-phase="3">3. GESTURE</button>
+    <button class="dev-btn dev-btn-primary" data-phase="4">4. HARMONY</button>
+  </div>
+
+  <!-- PHASE INDICATOR (subtle) -->
+  <div id="phase-indicator">Phase 1: Idle</div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       APPLICATION ENTRY POINT
+       ═══════════════════════════════════════════════════════ -->
+  <script type="module" src="js/main.js"></script>
+
+</body>
+</html>

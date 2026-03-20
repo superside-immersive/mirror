@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AMC Interactive Mirror - Advanced UI Prototype</title>
+    
+    <!-- Google Fonts: Inter for a clean, premium corporate look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        amc: {
+                            blue: '#003E7E',     
+                            navy: '#001A36',     
+                            cyan: '#00A4E4',     
+                            red: '#E1251B'       
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- GSAP for Animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <style>
+        body {
+            background-color: #000;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* FAKE 3D BACKGROUND */
+        #mock-3d-canvas {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+            background-size: 400% 400%;
+        }
+
+        /* Background States */
+        .bg-idle {
+            background: radial-gradient(circle at center, #001A36 0%, #000000 100%);
+        }
+        .bg-chaos {
+            background: linear-gradient(45deg, #001A36, #4A1525, #003E7E, #000000);
+            animation: gradientShift 2s ease infinite;
+        }
+        .bg-harmony {
+            background: radial-gradient(circle at center, #003E7E 0%, #001A36 80%, #000000 100%);
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* DATA TRANSITION OVERLAY (Flashes between scenes) */
+        #data-transition-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 5;
+            background: rgba(0, 164, 228, 0.1);
+            backdrop-filter: blur(0px);
+            opacity: 0;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .scan-line {
+            width: 100%;
+            height: 2px;
+            background: rgba(0, 164, 228, 0.8);
+            box-shadow: 0 0 20px #00A4E4;
+            transform: translateY(-100vh);
+        }
+
+        /* UI LAYER */
+        #ui-layer {
+            position: absolute;
+            inset: 0;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .interactive {
+            pointer-events: auto;
+            cursor: pointer;
+        }
+
+        .text-shadow-premium {
+            text-shadow: 0px 8px 32px rgba(0, 26, 54, 0.9), 0px 2px 8px rgba(0, 0, 0, 0.8);
+        }
+
+        /* LOGOS & DATA RINGS */
+        .brand-logo-container {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .data-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px solid #00A4E4;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .brand-logo {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 900;
+            font-size: 1.25rem;
+            color: white;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .brand-logo:hover {
+            border-color: rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.15);
+            transform: scale(1.05);
+        }
+        
+        .brand-a { border-bottom: 3px solid #E1251B; }
+        .brand-b { border-bottom: 3px solid #00A4E4; }
+        .brand-c { border-bottom: 3px solid #22C55E; }
+
+    </style>
+</head>
+<body class="text-white font-sans antialiased">
+
+    <!-- FAKE 3D CANVAS BACKGROUND -->
+    <div id="mock-3d-canvas" class="bg-idle"></div>
+
+    <!-- DATA SCAN TRANSITION OVERLAY -->
+    <div id="data-transition-overlay">
+        <div class="scan-line" id="scan-line"></div>
+    </div>
+
+    <!-- UI OVERLAY LAYER -->
+    <div id="ui-layer" class="p-8">
+        
+        <!-- AMC OFFICIAL BRANDING HEADER -->
+        <div class="absolute top-8 left-10 flex items-center gap-4">
+            <svg width="48" height="48" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="100" height="100" rx="12" fill="white"/>
+                <path d="M72 40C72 26.7452 61.2548 16 48 16C34.7452 16 24 26.7452 24 40C24 45.4214 25.7989 50.4234 28.8524 54.4534C31.2514 57.6195 38.334 65.5 48 65.5C57.666 65.5 64.7486 57.6195 67.1476 54.4534C70.2011 50.4234 72 45.4214 72 40Z" fill="#003E7E"/>
+                <path d="M48 65.5C38.334 65.5 31.2514 57.6195 28.8524 54.4534C25.7989 50.4234 24 45.4214 24 40L48 40V65.5Z" fill="#00A4E4"/>
+                <path d="M28.8524 54.4534C28.8524 54.4534 32.5 73.5 48 83C63.5 73.5 67.1476 54.4534 67.1476 54.4534" stroke="#003E7E" stroke-width="6" stroke-linecap="round"/>
+            </svg>
+            <div class="flex flex-col justify-center">
+                <h2 class="text-[17px] font-bold tracking-[0.05em] leading-tight text-white drop-shadow-md">Albertsons</h2>
+                <p class="text-[11px] font-medium tracking-[0.22em] text-amc-cyan uppercase drop-shadow-md">Media Collective</p>
+            </div>
+        </div>
+
+        <!-- Floating Brand Logos -->
+        <div id="brands-container" class="absolute top-40 flex gap-16 opacity-0 invisible interactive">
+            <div class="brand-logo-container" id="logo-a">
+                <div class="data-ring"></div>
+                <div class="brand-logo brand-a" data-brand="red"><span class="opacity-90">BRAND A</span></div>
+            </div>
+            <div class="brand-logo-container" id="logo-b">
+                <div class="data-ring"></div>
+                <div class="brand-logo brand-b" data-brand="blue"><span class="opacity-90">BRAND B</span></div>
+            </div>
+            <div class="brand-logo-container" id="logo-c">
+                <div class="data-ring"></div>
+                <div class="brand-logo brand-c" data-brand="green"><span class="opacity-90">BRAND C</span></div>
+            </div>
+        </div>
+
+        <!-- Main Copy Container -->
+        <div id="copy-container" class="text-center max-w-6xl mt-56 px-4">
+            <h1 id="main-headline" class="text-5xl md:text-[5.5rem] font-black tracking-tighter mb-8 text-shadow-premium leading-[1.1]"></h1>
+            <p id="sub-headline" class="text-xl md:text-3xl font-light text-gray-200 tracking-wide text-shadow-premium max-w-4xl mx-auto leading-relaxed"></p>
+        </div>
+
+    </div>
+
+    <!-- DEVELOPER CONTROLS -->
+    <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-50 flex gap-3 bg-amc-navy/90 p-4 rounded-2xl backdrop-blur-xl interactive border border-white/20 shadow-2xl">
+        <span class="text-[10px] text-amc-cyan self-center mr-2 uppercase tracking-widest font-bold">Scene Trigger:</span>
+        <button onclick="triggerPhase1()" class="px-5 py-2.5 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-semibold tracking-wide transition border border-white/10">1. IDLE</button>
+        <button onclick="triggerPhase2()" class="px-5 py-2.5 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-semibold tracking-wide transition border border-white/10">2. CHAOS</button>
+        <button onclick="triggerPhase3()" class="px-5 py-2.5 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-semibold tracking-wide transition border border-white/10">3. GESTURE</button>
+        <button onclick="triggerPhase4()" class="px-5 py-2.5 bg-amc-blue hover:bg-[#0052a3] rounded-lg text-xs font-bold tracking-wide transition shadow-[0_0_20px_rgba(0,164,228,0.5)] border border-amc-cyan/50">4. HARMONY</button>
+    </div>
+
+    <script>
+        // DOM Elements
+        const headline = document.getElementById('main-headline');
+        const subHeadline = document.getElementById('sub-headline');
+        const bgCanvas = document.getElementById('mock-3d-canvas');
+        const brandsContainer = document.getElementById('brands-container');
+        const brandContainers = document.querySelectorAll('.brand-logo-container');
+        const dataOverlay = document.getElementById('data-transition-overlay');
+        const scanLine = document.getElementById('scan-line');
+
+        // GSAP Initialization
+        gsap.set(headline, { y: 50, autoAlpha: 0, scale: 0.9 });
+        gsap.set(subHeadline, { y: 30, autoAlpha: 0 });
+        
+        let textAnim = null;
+        let floatAnim = null;
+        let ringAnim = null;
+
+        // --- CINEMATIC SCENE TRANSITION (Data Scan) ---
+        function playSceneTransition(callback) {
+            const tl = gsap.timeline();
+            
+            // Flash and blur the screen
+            tl.to(dataOverlay, { autoAlpha: 1, backdropFilter: "blur(8px)", duration: 0.2, ease: "power2.inOut" })
+              // Run the scan line
+              .fromTo(scanLine, { y: "-10vh" }, { y: "110vh", duration: 0.6, ease: "power2.inOut" }, "<")
+              // Trigger the callback (changes the text and background)
+              .call(callback)
+              // Fade out the overlay
+              .to(dataOverlay, { autoAlpha: 0, backdropFilter: "blur(0px)", duration: 0.4, ease: "power2.inOut" }, "+=0.1");
+        }
+
+        // --- ADVANCED TEXT ANIMATION ---
+        function animateTextChange(newHeadline, newSub) {
+            if (textAnim) textAnim.kill();
+            textAnim = gsap.timeline();
+            
+            // Exit current text dramatically
+            textAnim.to([headline, subHeadline], {
+                y: -40,
+                autoAlpha: 0,
+                scale: 0.95,
+                duration: 0.5,
+                stagger: 0.1,
+                ease: "power3.in"
+            })
+            // Update DOM
+            .call(() => {
+                headline.innerHTML = newHeadline;
+                subHeadline.innerHTML = newSub;
+                gsap.set([headline, subHeadline], { y: 50, scale: 0.95 }); 
+            })
+            // Enter new text with a powerful pop
+            .to(headline, {
+                y: 0,
+                autoAlpha: 1,
+                scale: 1,
+                duration: 0.9,
+                ease: "back.out(1.5)"
+            })
+            .to(subHeadline, {
+                y: 0,
+                autoAlpha: 1,
+                duration: 0.8,
+                ease: "expo.out"
+            }, "-=0.7");
+        }
+
+        // --- PHASE 1: IDLE (The Hook) ---
+        function triggerPhase1() {
+            playSceneTransition(() => {
+                bgCanvas.className = 'bg-idle';
+                
+                // Hide Logos
+                gsap.to(brandsContainer, { autoAlpha: 0, duration: 0.4, y: -30, scale: 0.9 });
+                if (floatAnim) floatAnim.kill();
+                if (ringAnim) ringAnim.kill();
+
+                // Focus on Attraction and Data
+                animateTextChange(
+                    "THE POWER OF <span class='text-amc-cyan'>ATTRACTION.</span>",
+                    "Step in to see how AMC's data magnetizes your ideal buyer."
+                );
+            });
+        }
+
+        // --- PHASE 2: CHAOS (The Problem) ---
+        function triggerPhase2() {
+            playSceneTransition(() => {
+                bgCanvas.className = 'bg-chaos';
+
+                // Logos fly in chaotically from different angles
+                gsap.set(brandsContainer, { autoAlpha: 1, y: 0, scale: 1 });
+                gsap.fromTo("#logo-a", { x: -100, y: -50, rotation: -45, autoAlpha: 0 }, { x: 0, y: 0, rotation: 0, autoAlpha: 1, duration: 1, ease: "back.out(1.2)" });
+                gsap.fromTo("#logo-b", { y: -100, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 1, ease: "back.out(1.5)", delay: 0.1 });
+                gsap.fromTo("#logo-c", { x: 100, y: -50, rotation: 45, autoAlpha: 0 }, { x: 0, y: 0, rotation: 0, autoAlpha: 1, duration: 1, ease: "back.out(1.2)", delay: 0.2 });
+                
+                // Floating animation starts
+                if (floatAnim) floatAnim.kill();
+                floatAnim = gsap.to('.brand-logo', {
+                    y: -15,
+                    rotationX: 10,
+                    rotationY: 5,
+                    duration: 2.5,
+                    stagger: { each: 0.4, repeat: -1, yoyo: true },
+                    ease: "sine.inOut"
+                });
+
+                // Copy highlights lack of data
+                animateTextChange(
+                    "THE AISLE IS <span class='text-amc-red'>NOISY.</span>",
+                    "Without data, brands struggle to attract the right attention."
+                );
+            });
+        }
+
+        // --- PHASE 3: GESTURE (Activating Data) ---
+        function triggerPhase3() {
+            playSceneTransition(() => {
+                // Background stays chaotic, but logos start pulsing with "Data Rings"
+                
+                // Animate Data Rings emitting from logos
+                if (ringAnim) ringAnim.kill();
+                ringAnim = gsap.to('.data-ring', {
+                    scale: 1.8,
+                    opacity: 0,
+                    duration: 1.5,
+                    stagger: 0.2,
+                    repeat: -1,
+                    ease: "power2.out"
+                });
+                gsap.set('.data-ring', { opacity: 0.5 }); // reset starting opacity
+
+                // Logos get a tech glow
+                gsap.to('.brand-logo', { 
+                    boxShadow: "0 0 30px rgba(0,164,228,0.5), inset 0 0 15px rgba(0,164,228,0.2)", 
+                    borderColor: "rgba(0,164,228,0.8)",
+                    duration: 1, 
+                    yoyo: true, 
+                    repeat: -1,
+                    ease: "sine.inOut"
+                });
+
+                // Copy focuses on harnessing data
+                animateTextChange(
+                    "HARNESS THE <span class='text-amc-cyan'>DATA.</span>",
+                    "Raise your hand. Select a brand and activate the laws of attraction."
+                );
+            });
+        }
+
+        // --- PHASE 4: HARMONY (Data-Driven Match) ---
+        function triggerPhase4(selectedBrandId = 'blue') {
+            // Massive screen flash for the climax
+            const tl = gsap.timeline();
+            tl.to(dataOverlay, { autoAlpha: 1, backgroundColor: "rgba(255,255,255,0.8)", backdropFilter: "blur(20px)", duration: 0.15 })
+              .call(() => {
+                  
+                  bgCanvas.className = 'bg-harmony';
+
+                  if (floatAnim) floatAnim.kill();
+                  if (ringAnim) ringAnim.kill();
+                  gsap.set('.data-ring', { opacity: 0 }); // Hide rings
+                  
+                  brandContainers.forEach(container => {
+                      const logo = container.querySelector('.brand-logo');
+                      gsap.killTweensOf(logo); 
+                      
+                      if(logo.dataset.brand === selectedBrandId) {
+                          // Selected brand becomes the center of gravity
+                          gsap.to(logo, { 
+                              scale: 1.5, 
+                              boxShadow: "0 0 80px rgba(0, 164, 228, 0.8)", 
+                              border: "2px solid #00A4E4",
+                              background: "rgba(0, 62, 126, 0.8)",
+                              duration: 1.5, 
+                              ease: "elastic.out(1, 0.4)" 
+                          });
+                          
+                          // Final massive data pulse
+                          const ring = container.querySelector('.data-ring');
+                          gsap.fromTo(ring, 
+                              { scale: 1, opacity: 1, borderColor: "#00A4E4" }, 
+                              { scale: 3, opacity: 0, duration: 2, ease: "power3.out" }
+                          );
+
+                      } else {
+                          // Competitors are "sucked" away or disappear
+                          gsap.to(logo, { 
+                              autoAlpha: 0, 
+                              scale: 0, 
+                              rotation: 90,
+                              duration: 0.5, 
+                              ease: "back.in(2)" 
+                          });
+                      }
+                  });
+
+                  animateTextChange(
+                      "DATA-DRIVEN <span class='text-amc-cyan'>ATTRACTION.</span>",
+                      "Zero friction. AMC connects your brand directly to the buyer's intent."
+                  );
+
+              })
+              .to(dataOverlay, { autoAlpha: 0, backgroundColor: "rgba(0, 164, 228, 0.1)", backdropFilter: "blur(0px)", duration: 0.8, ease: "power2.out" }, "+=0.1");
+        }
+
+        // Click listeners for the logos
+        document.querySelectorAll('.brand-logo').forEach(logo => {
+            logo.addEventListener('click', (e) => {
+                triggerPhase4(e.currentTarget.dataset.brand);
+            });
+        });
+
+        // Initialize App
+        window.onload = () => {
+            triggerPhase1();
+        };
+
+    </script>
+</body>
+</html>

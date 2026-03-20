@@ -1,0 +1,425 @@
+/* ═══════════════════════════════════════════════════════════
+   AMC Interactive Mirror — UI Styles
+   All component styles for the overlay UI layer
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Reset & Base ────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #000;
+  font-family: var(--font-sans);
+  color: var(--amc-white);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Three.js Canvas ─────────────────────────────────────── */
+canvas {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+
+/* ── Hidden Webcam Video ─────────────────────────────────── */
+#webcam {
+  display: none;
+}
+
+/* ── Loading Overlay ─────────────────────────────────────── */
+#loading {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  background: var(--amc-navy-deep);
+  transition: opacity 0.6s var(--ease-smooth);
+}
+#loading.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loading-logo {
+  width: 80px;
+  height: auto;
+  opacity: 0.9;
+}
+
+.loading-logo-official {
+  width: min(280px, 60vw);
+  filter: brightness(0) invert(1);
+  opacity: 0.98;
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgba(0, 164, 228, 0.15);
+  border-top-color: var(--amc-cyan);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+#loading-text {
+  font-size: 0.8rem;
+  font-weight: 400;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--amc-gray-300);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── FPS Counter ─────────────────────────────────────────── */
+#fps {
+  position: fixed;
+  top: 12px;
+  right: 16px;
+  z-index: 60;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: var(--amc-cyan);
+  opacity: 0.5;
+  letter-spacing: 0.05em;
+  pointer-events: none;
+}
+
+/* ── Background States ───────────────────────────────────── */
+.bg-idle {
+  background: var(--gradient-idle) !important;
+}
+.bg-chaos {
+  background: var(--gradient-chaos) !important;
+  background-size: 400% 400% !important;
+  animation: gradientShift 3s ease infinite;
+}
+.bg-harmony {
+  background: var(--gradient-harmony) !important;
+}
+
+@keyframes gradientShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ── Data Transition Overlay ─────────────────────────────── */
+#data-transition-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  background: rgba(0, 164, 228, 0.045);
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
+  opacity: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.scan-line {
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, rgba(0, 164, 228, 0.4) 20%, var(--amc-cyan) 50%, rgba(0, 164, 228, 0.4) 80%, transparent 100%);
+  box-shadow: 0 0 30px var(--amc-cyan), 0 0 60px rgba(0, 164, 228, 0.3);
+  transform: translateY(-100vh);
+}
+
+/* ── UI Overlay Layer ────────────────────────────────────── */
+#ui-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+}
+
+.interactive {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* ── AMC Brand Header ────────────────────────────────────── */
+.brand-header {
+  position: absolute;
+  top: 2rem;
+  left: 2.5rem;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  z-index: 25;
+}
+
+.brand-header-logo {
+  width: 52px;
+  height: auto;
+  filter: drop-shadow(0 0 20px rgba(0, 164, 228, 0.15));
+  flex-shrink: 0;
+}
+
+.brand-header-logo-official {
+  width: min(260px, 44vw);
+  filter: brightness(0) invert(1) drop-shadow(0 0 22px rgba(0, 164, 228, 0.12));
+}
+
+.brand-header-divider {
+  width: 1px;
+  height: 36px;
+  background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.2), transparent);
+  flex-shrink: 0;
+}
+
+.brand-header-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+
+.brand-header-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+  color: var(--amc-white);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+
+.brand-header-subtitle {
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--amc-cyan);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+
+/* ── Hero Copy ───────────────────────────────────────────── */
+#copy-container {
+  text-align: center;
+  max-width: 48rem;
+  padding: 2rem 2.5rem;
+  margin-top: 9rem;
+}
+
+#main-headline {
+  font-size: var(--font-hero-size);
+  font-weight: var(--font-hero-weight);
+  letter-spacing: var(--font-hero-track);
+  line-height: 1.12;
+  margin: 0 0 1.35rem;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.95), 0 4px 28px rgba(0, 13, 26, 0.9), 0 8px 40px rgba(0, 0, 0, 0.5);
+  color: #FFFFFF;
+}
+
+#main-headline .text-accent {
+  color: var(--amc-cyan);
+  text-shadow: var(--shadow-text-hero), 0 0 40px rgba(0, 164, 228, 0.3);
+}
+.headline-rule {
+  width: 64px;
+  height: 2px;
+  margin: 0 auto 1.35rem;
+  background: linear-gradient(90deg, transparent, var(--amc-cyan), transparent);
+  border: none;
+  opacity: 0.45;
+}
+
+#sub-headline {
+  font-size: var(--font-sub-size);
+  font-weight: 400;
+  letter-spacing: var(--font-sub-track);
+  line-height: 1.55;
+  margin: 0 auto;
+  max-width: 36rem;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9), 0 4px 20px rgba(0, 0, 0, 0.6);
+}
+
+/* ── Floating Brand Logos ────────────────────────────────── */
+#brands-container {
+  position: absolute;
+  top: 4.5rem;
+  display: flex;
+  gap: clamp(2rem, 5vw, 4rem);
+  opacity: 0;
+  visibility: hidden;
+}
+
+.brand-logo-container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.data-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid var(--amc-cyan);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.brand-logo {
+  width: clamp(80px, 8vw, 115px);
+  height: clamp(80px, 8vw, 115px);
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: 800;
+  font-size: clamp(0.65rem, 1vw, 0.85rem);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--amc-white);
+  background: linear-gradient(135deg, rgba(0, 62, 126, 0.12), rgba(0, 164, 228, 0.04));
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--glass-border);
+  transition: all 0.35s var(--ease-smooth);
+  position: relative;
+  z-index: 2;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.brand-logo:hover {
+  border-color: var(--glass-border-hover);
+  background: linear-gradient(135deg, rgba(0, 62, 126, 0.25), rgba(0, 164, 228, 0.1));
+  transform: scale(1.08);
+  box-shadow: var(--shadow-card), var(--shadow-glow-cyan);
+}
+
+.brand-logo .logo-label {
+  opacity: 0.85;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* Brand accent borders */
+.brand-a { border-bottom: 3px solid var(--amc-white); }
+.brand-b { border-bottom: 3px solid rgba(17, 17, 17, 0.9); }
+.brand-c { border-bottom: 3px solid var(--amc-blue); }
+
+.brand-a:hover { box-shadow: var(--shadow-card), 0 0 26px rgba(255, 255, 255, 0.18); }
+.brand-b:hover { box-shadow: var(--shadow-card), 0 0 26px rgba(0, 0, 0, 0.32); }
+.brand-c:hover { box-shadow: var(--shadow-card), 0 0 26px rgba(0, 62, 126, 0.28); }
+
+/* ── Developer Controls ──────────────────────────────────── */
+#dev-controls {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: none;         /* hidden by default; shown with ?debug */
+  gap: 0.5rem;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  background: rgba(0, 26, 54, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+}
+#dev-controls.visible { display: flex; }
+
+.dev-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--amc-cyan);
+  margin-right: 0.5rem;
+  white-space: nowrap;
+}
+
+.dev-btn {
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  color: var(--amc-white);
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+.dev-btn:hover {
+  background: rgba(0, 164, 228, 0.12);
+  border-color: var(--amc-cyan-muted);
+}
+.dev-btn.active {
+  background: rgba(0, 164, 228, 0.18);
+  border-color: var(--amc-cyan);
+  color: var(--amc-cyan);
+}
+
+.dev-btn-primary {
+  background: var(--amc-blue);
+  border-color: var(--amc-cyan-muted);
+  box-shadow: 0 0 20px rgba(0, 164, 228, 0.3);
+  font-weight: 700;
+}
+.dev-btn-primary:hover {
+  background: var(--amc-blue-light);
+  border-color: var(--amc-cyan);
+}
+
+/* ── Phase Indicator (subtle) ────────────────────────────── */
+#phase-indicator {
+  position: fixed;
+  bottom: 1rem;
+  right: 1.5rem;
+  z-index: 50;
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--amc-gray-400);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+@media (max-width: 768px) {
+  .brand-header {
+    top: 1.5rem;
+    left: 1.25rem;
+  }
+
+  .brand-header-logo-official {
+    width: min(220px, 58vw);
+  }
+
+  .loading-logo-official {
+    width: min(220px, 70vw);
+  }
+}
+
+/* ── Utility ─────────────────────────────────────────────── */
+.hidden { display: none !important; }
+.invisible { visibility: hidden; }
