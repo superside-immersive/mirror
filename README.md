@@ -10,17 +10,17 @@ Visitors step into a store environment where brands compete for attention at the
 
 ### Mirror Avatar
 
-Using **full-body pose tracking** (MediaPipe), the screen builds a live "mirror-self" avatar made entirely of **floating grocery products**. As the visitor stands in front of the screen, hundreds of product-shaped boxes fly off the shelves and assemble into a real-time silhouette of their body — head, torso, arms, legs — all rendered in 3D.
+Using **full-body pose tracking** (MediaPipe), the screen builds a live "mirror-self" avatar made of instanced supermarket products driven by physics proxies. The **webcam feed stays visible as the background**, and products only fly into frame once a person is detected, assembling into a real-time silhouette of the body — head, torso, arms, legs — rendered in 3D.
 
-The type of products displayed on the shelves is **configurable**: different brands, categories, or campaigns can be loaded to tailor the experience per activation.
+The branded version currently supports three selectable hero products: **Heinz Mustard**, **Oreo Cookie**, and **Coca-Cola Classic Bottle**. Each one is loaded from its own GLB and rendered with its **native textures and materials**, while preserving the same pose-driven body formation system.
 
 ### Physical Interaction
 
-Products behave with **real physics** — bobbing, colliding, and scattering as users move. The figure is never static: cubes gently wobble and rotate organically, giving the avatar a living, breathing quality. When the visitor steps away, products fly back to the shelves in satisfying flock-like arcs, swooping through the air before settling neatly into place.
+Products behave with **real physics** — bobbing, colliding, and scattering as users move. The figure is never static: cubes gently wobble and rotate organically, giving the avatar a living, breathing quality. When the visitor steps away, products fly back **out of frame** in satisfying flock-like arcs instead of resting on visible shelves.
 
 ### Playful Discovery
 
-Gestures and movement trigger satisfying **bursts of motion and reassembly**, encouraging quick experimentation and repeat plays. The physicality of the interaction — seeing yourself made of products that react to your every move — reinforces the emotional connection at the moment where **in-store influence drives final decisions**.
+Gestures and movement trigger phase transitions and reassembly, encouraging quick experimentation and repeat plays. Hand-raise interactions move the experience into the gesture phase, and brand selection is currently finalized through **mouse/tap clicks** on the on-screen selector cards. The physicality of the interaction — seeing yourself made of products that react to your every move — reinforces the emotional connection at the moment where **in-store influence drives final decisions**.
 
 ---
 
@@ -36,13 +36,21 @@ Gestures and movement trigger satisfying **bursts of motion and reassembly**, en
 ## Architecture
 
 ```
-index.html          Minimal shell: hidden video, loading spinner, fullscreen canvas
-app.js              All application logic (~600 lines):
-                    ├── Body Segments    13 segments mapping 33 landmarks → ~371 cubes
-                    ├── Shelf System     6 shelves × 2 sides, ~600 extra product cubes
-                    ├── Physics          Zero-gravity world, direct velocity targeting
-                    ├── Animation        Flock return, organic wobble, progressive spawn
-                    └── Rendering        PBR env map, hemisphere + directional lighting
+index.html          App shell + UI overlay (loading, selector, copy, debug controls)
+js/main.js          Entry point and startup orchestration
+js/config.js        Single source of truth for tuning constants
+js/scene.js         Three.js setup, environment map, shelf visuals, resize handling
+js/physics.js       cannon-es world and proxy bodies
+js/mediapipe.js     Webcam + PoseLandmarker initialization and per-frame detection
+js/bodyTargets.js   Landmark smoothing and body target generation
+js/cubeData.js      Active/static shelf population + shelf home targets
+js/productCatalog.js Loads per-product GLBs or a shared catalog and normalizes bounds
+js/productOptions.js Branded option definitions (Kraft Heinz / Mondelez / Coca-Cola)
+js/productRenderer.js Instanced rendering pipeline for active + static products
+js/gestureDetector.js Phase state machine and gesture logic
+js/uiPhases.js      Phase-driven UX copy/overlay/animation triggers
+js/signatures/*     Signature motion layers for stack / calibration / fizz
+js/animationLoop.js Main frame loop: detect → phase → drive → simulate → render
 ```
 
 ## Key Design Decisions
@@ -58,14 +66,16 @@ app.js              All application logic (~600 lines):
 | Parameter | Current Value | Description |
 |-----------|--------------|-------------|
 | `PRODUCT_TYPES` | 8 types | Array of `{w, h, d}` — add/change product shapes here |
-| `SHELF_EXTRA` | 600 | Number of extra shelf-only cubes |
+| `SHELF_EXTRA` | 120 | Number of active shelf-return items |
+| `STATIC_SHELF_ITEMS` | 200 | Decorative static shelf fill items |
 | `NUM_SHELVES` | 6 | Shelf rows per side |
 | `SHELF_LENGTH` | 8 | Z-extent of each gondola |
 | `SHELF_X` | 3.2 | Distance from center to shelf walls |
-| `STIFFNESS` / `MAX_SPEED` | 6 / 8 | How fast cubes seek their target |
+| `STIFFNESS` / `MAX_SPEED` | 3 / 4 | How fast cubes seek their target |
 | `SEGMENTS` | 13 entries | Body part definitions (cube count, thickness, size multiplier) |
-| Cube color | `0x1a5caa` | Single color for all product cubes |
-| Shelf color | `0x1a5caa` / `0x164d90` | Gondola plank and panel colors |
+| Product options | `kraft-heinz` / `mondelez` / `coca-cola` | Branded selector options for active items |
+| Shelf color | `AMC_COLORS.blue` / `AMC_COLORS.navy` | Gondola plank and panel colors |
+| Hero assets | `./assets/glb/mustard.glb`, `./assets/glb/oreo.glb`, `./assets/glb/cocacola.glb` | Source GLBs used for branded body formation |
 
 ## Running Locally
 
@@ -83,7 +93,11 @@ Requires a webcam and a modern browser with WebGL2 support.
 
 - [ ] Configurable product textures / brand logos on cubes
 - [ ] Gesture-triggered scatter bursts (wave, clap detection)
-- [ ] Multiple product category modes (beverages, snacks, cleaning, etc.)
+- [x] Category-aware product distribution from GLB variant names
+- [x] Branded 3-option selector with click/tap selection
+- [x] Per-brand harmony signatures (stack / calibration / fizz), v1
+- [ ] Gesture-based dwell selection
+- [ ] Explicit runtime category mode switching (beverages, snacks, cleaning, etc.)
 - [ ] Sound design — satisfying swoosh/click sounds on formation and scatter
 - [ ] Multi-person support
 - [ ] Analytics overlay — heatmap of which body parts attract most attention

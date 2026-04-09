@@ -1,113 +1,90 @@
 // ═══════════════════════════════════════════════════════════
-//  uiPhases.js — Phase trigger functions & unified phase API
-//  Bridges gestureDetector state → visual UI transitions
-//
-//  Overlay + text are ALWAYS managed together:
-//    • showTextWithOverlay() — dims overlay FIRST, then fades in text
-//    • hideText()            — fades out text only (overlay untouched)
-//    • dimOverlay / clearOverlay / idleOverlay — explicit overlay control
+//  uiPhases.js — Phase-driven UI orchestration for the
+//  branded AMC mirror experience
 // ═══════════════════════════════════════════════════════════
 
-import { PHASE } from './config.js';
+import { CHAOS_AUTO_GESTURE_MS, HARMONY_COPY_DELAY_MS, PHASE } from './config.js';
 import {
+  animateBrandsFlyIn,
+  animateHarmony,
+  clearSignatureOverlay,
+  hideBrands,
   playSceneTransition,
-  animateBrandsFlyIn, startFloatingAnimation,
-  startRingPulse, startTechGlow,
-  hideBrands, animateHarmony,
+  startFloatingAnimation,
+  startRingPulse,
+  startTechGlow,
+  updateSelectedOptionDebug,
 } from './uiAnimations.js';
 
 /* global gsap */
 
-// ─── Overlay Opacity Constants ──────────────────────────────
-const OVERLAY_DIM   = 0.45;   // dark enough for white text to read
-const OVERLAY_CLEAR = 0.10;   // nearly transparent — full 3D scene view
-const OVERLAY_IDLE  = 0.35;   // default idle vibe
-const TEXT_BLUR     = 10;     // readable backdrop blur behind copy
+const OVERLAY_DIM = 0;
+const OVERLAY_CLEAR = 0;
+const OVERLAY_IDLE = 0;
+const TEXT_BLUR = 0;
 
-// ─── Timing Constants ───────────────────────────────────────
-const TEXT_BLACKOUT_MS    = 8000;  // hide text this long after first detection
-const HARMONY_DELAY_MS   = 4000;  // wait for products to settle before harmony text
-const OVERLAY_FADE_DUR   = 0.35;  // seconds for overlay transitions
-const TEXT_IN_DUR        = 0.55;
-const TEXT_OUT_DUR       = 0.28;
+const TEXT_BLACKOUT_MS = Math.max(CHAOS_AUTO_GESTURE_MS - 600, 1800);
+const OVERLAY_FADE_DUR = 0.35;
+const TEXT_IN_DUR = 0.55;
+const TEXT_OUT_DUR = 0.28;
 
-// ─── State ──────────────────────────────────────────────────
-let activePhase        = 0;      // current phase (avoid re-triggers)
-let firstChaosTriggered = false; // has the IDLE→CHAOS transition happened?
-let blackoutTimer      = null;   // timer for text blackout
-let harmonyTextTimer   = null;   // timer for delayed harmony text
-let textVisible        = false;  // is text currently showing?
-let heroTimeline       = null;   // unified text + backdrop timeline
+let activePhase = -1;
+let activeSelectedOptionId = null;
+let activeErrorMessage = null;
+let firstChaosTriggered = false;
+let blackoutTimer = null;
+let harmonyTextTimer = null;
+let textVisible = false;
+let heroTimeline = null;
 
-/** Get the current active phase number */
-export function getActivePhase() { return activePhase; }
-
-// ─── Overlay Helpers ────────────────────────────────────────
 const _overlay = () => document.getElementById('mock-3d-canvas');
 const _blurOverlay = () => document.getElementById('data-transition-overlay');
-
-function dimOverlay(dur = OVERLAY_FADE_DUR) {
-  const el = _overlay();
-  if (el) gsap.to(el, { opacity: OVERLAY_DIM, duration: dur, ease: 'power2.inOut' });
-}
-
-function clearOverlay(dur = OVERLAY_FADE_DUR) {
-  const el = _overlay();
-  if (el) gsap.to(el, { opacity: OVERLAY_CLEAR, duration: dur, ease: 'power2.inOut' });
-}
-
-function idleOverlay(dur = OVERLAY_FADE_DUR) {
-  const el = _overlay();
-  if (el) gsap.to(el, { opacity: OVERLAY_IDLE, duration: dur, ease: 'power2.inOut' });
-}
-
-function showBlurOverlay(dur = OVERLAY_FADE_DUR) {
-  const el = _blurOverlay();
-  if (!el) return;
-  gsap.to(el, {
-    autoAlpha: 1,
-    backgroundColor: 'rgba(0, 18, 38, 0.18)',
-    backdropFilter: `blur(${TEXT_BLUR}px)`,
-    webkitBackdropFilter: `blur(${TEXT_BLUR}px)`,
-    duration: dur,
-    ease: 'power2.out',
-  });
-}
-
-function hideBlurOverlay(dur = OVERLAY_FADE_DUR) {
-  const el = _blurOverlay();
-  if (!el) return;
-  gsap.to(el, {
-    autoAlpha: 0,
-    backgroundColor: 'rgba(0, 164, 228, 0.045)',
-    backdropFilter: 'blur(0px)',
-    webkitBackdropFilter: 'blur(0px)',
-    duration: dur,
-    ease: 'power2.inOut',
-  });
-}
-
-// ─── Text Helpers ───────────────────────────────────────────
-const _headline    = () => document.getElementById('main-headline');
+const _headline = () => document.getElementById('main-headline');
 const _subHeadline = () => document.getElementById('sub-headline');
-const _rule        = () => document.querySelector('.headline-rule');
+const _rule = () => document.querySelector('.headline-rule');
+const _photoCTA = () => document.getElementById('photo-cta');
+
+export function getActivePhase() {
+  return activePhase;
+}
 
 function killHeroTimeline() {
   if (heroTimeline) {
     heroTimeline.kill();
     heroTimeline = null;
   }
-  const targets = [_overlay(), _blurOverlay(), _headline(), _rule(), _subHeadline()].filter(Boolean);
-  gsap.killTweensOf(targets);
+  gsap.killTweensOf([_overlay(), _blurOverlay(), _headline(), _rule(), _subHeadline(), _photoCTA()].filter(Boolean));
 }
 
-/**
- * Fade out current text AND clear the overlay.
- * Text and overlay are always coupled: no text → no dim.
- */
+function clearAllTimers() {
+  if (blackoutTimer) { clearTimeout(blackoutTimer); blackoutTimer = null; }
+  if (harmonyTextTimer) { clearTimeout(harmonyTextTimer); harmonyTextTimer = null; }
+}
+
+function hidePhotoCTA() {
+  const photoCTA = _photoCTA();
+  if (!photoCTA) return;
+  gsap.to(photoCTA, {
+    autoAlpha: 0,
+    y: 12,
+    duration: 0.24,
+    ease: 'power2.inOut',
+  });
+}
+
+function showPhotoCTA() {
+  const photoCTA = _photoCTA();
+  if (!photoCTA) return;
+  gsap.fromTo(photoCTA,
+    { autoAlpha: 0, y: 12 },
+    { autoAlpha: 1, y: 0, duration: 0.4, ease: 'power2.out' }
+  );
+}
+
 function hideText(dur = 1.0) {
   const targets = [_headline(), _subHeadline(), _rule()].filter(Boolean);
   killHeroTimeline();
+  hidePhotoCTA();
 
   heroTimeline = gsap.timeline({ onComplete: () => { heroTimeline = null; } });
   heroTimeline
@@ -136,11 +113,6 @@ function hideText(dur = 1.0) {
   textVisible = false;
 }
 
-/**
- * The ONE canonical way to show text.
- * Blur + dim + text are driven by one timeline, so the readable
- * backdrop exists exactly when the copy becomes visible.
- */
 function showTextWithOverlay(headlineHTML, subHTML) {
   const headline = _headline();
   const subHeadline = _subHeadline();
@@ -160,9 +132,9 @@ function showTextWithOverlay(headlineHTML, subHTML) {
     }, 0)
     .to(blurOverlay, {
       autoAlpha: 1,
-      backgroundColor: 'rgba(0, 18, 38, 0.18)',
-      backdropFilter: `blur(${TEXT_BLUR}px)`,
-      webkitBackdropFilter: `blur(${TEXT_BLUR}px)`,
+      backgroundColor: 'rgba(0, 18, 38, 0.08)',
+      backdropFilter: 'blur(0px)',
+      webkitBackdropFilter: 'blur(0px)',
       duration: OVERLAY_FADE_DUR,
       ease: 'power2.out',
     }, 0)
@@ -204,27 +176,34 @@ function showTextWithOverlay(headlineHTML, subHTML) {
   textVisible = true;
 }
 
-// ─── Clear All Timers ───────────────────────────────────────
-function clearAllTimers() {
-  if (blackoutTimer)     { clearTimeout(blackoutTimer);     blackoutTimer     = null; }
-  if (harmonyTextTimer)  { clearTimeout(harmonyTextTimer);  harmonyTextTimer  = null; }
+function setBackground(className) {
+  const bgCanvas = _overlay();
+  if (!bgCanvas) return;
+  bgCanvas.className = className;
+  bgCanvas.style.opacity = '0';
+  bgCanvas.style.background = 'transparent';
 }
 
-// ═══════════════════════════════════════════════════════════
-//  Phase Triggers
-// ═══════════════════════════════════════════════════════════
+function triggerBoot() {
+  hideBrands();
+  hidePhotoCTA();
+  clearSignatureOverlay();
+  setBackground('bg-boot');
+  showTextWithOverlay(
+    'PREPARING THE <span class="text-accent">MIRROR.</span>',
+    'Loading camera, pose tracking, and branded product assets.'
+  );
+}
 
-// ─── Phase 1: IDLE — "The Hook" ─────────────────────────────
-function triggerPhase1() {
+function triggerIdle() {
   clearAllTimers();
   firstChaosTriggered = false;
-  textVisible = false;
+  hideBrands();
+  hidePhotoCTA();
+  clearSignatureOverlay();
 
   playSceneTransition(() => {
-    const bgCanvas = _overlay();
-    if (bgCanvas) bgCanvas.className = 'bg-idle';
-
-    hideBrands();
+    setBackground('bg-idle');
   }, () => {
     showTextWithOverlay(
       'THE POWER OF <span class="text-accent">ATTRACTION.</span>',
@@ -233,25 +212,17 @@ function triggerPhase1() {
   });
 }
 
-// ─── Phase 2: CHAOS — "The Problem" ─────────────────────────
-function triggerPhase2() {
+function triggerChaos() {
+  hideBrands();
+  hidePhotoCTA();
+  clearSignatureOverlay();
+
   playSceneTransition(() => {
-    const bgCanvas = _overlay();
-    if (bgCanvas) bgCanvas.className = 'bg-chaos';
-
-    animateBrandsFlyIn();
-    startFloatingAnimation();
+    setBackground('bg-chaos');
   }, () => {
-
     if (!firstChaosTriggered) {
-      // ── First time: blackout period ──
       firstChaosTriggered = true;
-
-      // Hide text + clear overlay so user sees 3D products clearly
       hideText(1.2);
-
-      // After blackout, show CHAOS text with overlay dimming
-      if (blackoutTimer) clearTimeout(blackoutTimer);
       blackoutTimer = setTimeout(() => {
         if (activePhase === PHASE.CHAOS) {
           showTextWithOverlay(
@@ -261,9 +232,7 @@ function triggerPhase2() {
         }
         blackoutTimer = null;
       }, TEXT_BLACKOUT_MS);
-
     } else {
-      // ── Returning to CHAOS: show text right away with overlay ──
       showTextWithOverlay(
         'THE AISLE IS <span class="text-accent">NOISY.</span>',
         'Without data, brands struggle to attract the right attention.'
@@ -272,12 +241,14 @@ function triggerPhase2() {
   });
 }
 
-// ─── Phase 3: GESTURE — "Activating Data" ───────────────────
-function triggerPhase3() {
-  // Kill any pending CHAOS blackout timer so it doesn't overwrite GESTURE text
+function triggerGesture() {
   if (blackoutTimer) { clearTimeout(blackoutTimer); blackoutTimer = null; }
+  hidePhotoCTA();
 
   playSceneTransition(() => {
+    setBackground('bg-chaos');
+    animateBrandsFlyIn();
+    startFloatingAnimation();
     startRingPulse();
     startTechGlow();
   }, () => {
@@ -288,64 +259,103 @@ function triggerPhase3() {
   });
 }
 
-// ─── Phase 4: HARMONY — "Data-Driven Match" ─────────────────
-function triggerPhase4(selectedBrandId = 'blue') {
-  const bgCanvas = _overlay();
-  if (bgCanvas) bgCanvas.className = 'bg-harmony';
-
-  animateHarmony(selectedBrandId);
-
-  // Hide text + clear overlay so products are visible
+function triggerHarmony(selectedOptionId) {
+  setBackground('bg-harmony');
+  animateHarmony(selectedOptionId);
   hideText(0.8);
 
-  // After products settle, show HARMONY text with overlay
-  if (harmonyTextTimer) clearTimeout(harmonyTextTimer);
   harmonyTextTimer = setTimeout(() => {
     if (activePhase === PHASE.HARMONY) {
       showTextWithOverlay(
-        'DATA-DRIVEN <span class="text-accent">ATTRACTION.</span>',
-        'Zero friction. AMC connects your brand directly to the buyer\'s intent.'
+        'FROM CHAOS TO <span class="text-accent">PRECISION.</span>',
+        'AMC connects your brand to the right purchase intent—and proves it with closed-loop measurement.'
       );
+      showPhotoCTA();
     }
     harmonyTextTimer = null;
-  }, HARMONY_DELAY_MS);
+  }, HARMONY_COPY_DELAY_MS);
 }
 
-// ═══════════════════════════════════════════════════════════
-//  Unified Phase API
-// ═══════════════════════════════════════════════════════════
+function triggerPoseLost() {
+  hideBrands();
+  hidePhotoCTA();
+  clearSignatureOverlay();
 
-/**
- * Set the current UI phase. Will not re-trigger if already in that phase.
- * @param {number} phase - PHASE constant (1-4)
- * @param {object} opts  - { selectedBrand?: string }
- */
+  playSceneTransition(() => {
+    setBackground('bg-pose-lost');
+  }, () => {
+    showTextWithOverlay(
+      'RETURNING TO <span class="text-accent">SHELF.</span>',
+      'Step back in when you are ready to form your next match.'
+    );
+  });
+}
+
+function triggerError(errorMessage) {
+  hideBrands();
+  hidePhotoCTA();
+  clearSignatureOverlay();
+  setBackground('bg-error');
+  showTextWithOverlay(
+    'SYSTEM <span class="text-accent">ERROR.</span>',
+    errorMessage || 'A critical startup error occurred. Check camera permissions and assets.'
+  );
+}
+
 export function setPhase(phase, opts = {}) {
-  if (phase === activePhase) return;
+  const { selectedOptionId = null, errorMessage = null } = opts;
+  if (phase === activePhase && selectedOptionId === activeSelectedOptionId && errorMessage === activeErrorMessage) return;
+
   clearAllTimers();
   killHeroTimeline();
   activePhase = phase;
+  activeSelectedOptionId = selectedOptionId;
+  activeErrorMessage = errorMessage;
 
-  // Update phase indicator
+  updateSelectedOptionDebug(selectedOptionId);
+
   const indicator = document.getElementById('phase-indicator');
-  const names = { [PHASE.IDLE]: 'Idle', [PHASE.CHAOS]: 'Chaos', [PHASE.GESTURE]: 'Gesture', [PHASE.HARMONY]: 'Harmony' };
+  const names = {
+    [PHASE.BOOT]: 'Boot',
+    [PHASE.IDLE]: 'Idle',
+    [PHASE.CHAOS]: 'Chaos',
+    [PHASE.GESTURE]: 'Gesture',
+    [PHASE.HARMONY]: 'Harmony',
+    [PHASE.POSE_LOST]: 'Pose Lost',
+    [PHASE.ERROR]: 'Error',
+  };
   if (indicator) indicator.textContent = `Phase ${phase}: ${names[phase] || ''}`;
 
-  // Update debug button active states
   document.querySelectorAll('.dev-btn[data-phase]').forEach(btn => {
-    btn.classList.toggle('active', parseInt(btn.dataset.phase) === phase);
+    btn.classList.toggle('active', parseInt(btn.dataset.phase, 10) === phase);
   });
 
   switch (phase) {
-    case PHASE.IDLE:    triggerPhase1(); break;
-    case PHASE.CHAOS:   triggerPhase2(); break;
-    case PHASE.GESTURE: triggerPhase3(); break;
-    case PHASE.HARMONY: triggerPhase4(opts.selectedBrand || 'blue'); break;
+    case PHASE.BOOT:
+      triggerBoot();
+      break;
+    case PHASE.IDLE:
+      triggerIdle();
+      break;
+    case PHASE.CHAOS:
+      triggerChaos();
+      break;
+    case PHASE.GESTURE:
+      triggerGesture();
+      break;
+    case PHASE.HARMONY:
+      triggerHarmony(selectedOptionId || 'coca-cola');
+      break;
+    case PHASE.POSE_LOST:
+      triggerPoseLost();
+      break;
+    case PHASE.ERROR:
+      triggerError(errorMessage);
+      break;
   }
 }
 
-/** Force phase from debug controls (bypasses duplicate check) */
 export function forcePhase(phase, opts = {}) {
-  activePhase = 0;   // reset so setPhase won't skip
+  activePhase = -1;
   setPhase(phase, opts);
 }

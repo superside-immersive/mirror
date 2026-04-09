@@ -63,11 +63,15 @@ export function detectPose() {
 
   try {
     const result = poseLandmarker.detectForVideo(video, performance.now());
-    if (result.worldLandmarks && result.worldLandmarks.length > 0) {
-      const wl = smoothLandmarks(result.worldLandmarks[0]);
-      poseState.bodyTargets      = computeBodyTargets(wl);
+    if (result.landmarks && result.landmarks.length > 0) {
+      const imageLandmarks = smoothLandmarks(result.landmarks[0], 'image');
+      const worldLandmarks = result.worldLandmarks?.length
+        ? smoothLandmarks(result.worldLandmarks[0], 'world')
+        : null;
+
+      poseState.bodyTargets      = computeBodyTargets(imageLandmarks, worldLandmarks, video);
       poseState.poseActive       = true;
-      poseState.currentLandmarks = wl;
+      poseState.currentLandmarks = imageLandmarks;
     } else {
       poseState.poseActive       = false;
       poseState.currentLandmarks = null;

@@ -1,13 +1,13 @@
 // ═══════════════════════════════════════════════════════════
-//  productCatalog.js — Loads PRODUCTOS.glb and builds a
-//  reusable catalog of normalized supermarket product variants
+//  productCatalog.js — Loads branded hero GLBs (or a shared
+//  catalog) and normalizes their native geometry/materials
 // ═══════════════════════════════════════════════════════════
 
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
 import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/loaders/GLTFLoader.js';
 
 const loader = new GLTFLoader();
-let cachedCatalog = null;
+const catalogCache = new Map();
 
 function inferCategory(name) {
   const normalized = (name || '').toLowerCase();
@@ -58,11 +58,10 @@ function transformBounds(box, matrix) {
 }
 
 export async function loadProductCatalog(assetPath) {
-  if (cachedCatalog) return cachedCatalog;
-
-  const gltf = await loader.loadAsync(assetPath);
-  const root = gltf.scene;
-  root.updateWorldMatrix(true, true);
+  const cacheKey = Array.isArray(assetPath)
+    ? `options:${assetPath.map(option => `${option.id}:${option.heroProductAssetPath}`).join('|')}`
+    : `catalog:${assetPath}`;
+  if (catalogCache.has(cacheKey)) return catalogCache.get(cacheKey);
 
   const materialCache = new Map();
   const materials = [];
@@ -78,9 +77,7 @@ export async function loadProductCatalog(assetPath) {
     return materialCache.get(key);
   };
 
-  const roots = root.children.filter(child => countMeshes(child) > 0);
-
-  roots.forEach((variantRoot, variantIndex) => {
+  const appendVariant = (variantRoot, variantIndex, meta = {}) => {
     variantRoot.updateWorldMatrix(true, true);
 
     const bounds = new THREE.Box3().setFromObject(variantRoot);
@@ -101,14 +98,15 @@ export async function loadProductCatalog(assetPath) {
     variantRoot.traverse(child => {
       if (!child.isMesh || !child.geometry) return;
 
-      const sourceMaterial = Array.isArray(child.material) ? child.material[0] : child.material;
-      const materialIndex = registerMaterial(sourceMaterial);
+      const sourceMaterials = Array.isArray(child.material) ? child.material : [child.material];
+      const materialIndices = sourceMaterials.map(registerMaterial);
       const relativeMatrix = createRelativeMatrix(child);
       const pieceMatrix = normalizeMatrix.clone().multiply(uprightCorrection).multiply(relativeMatrix);
 
       pieces.push({
         geometry: child.geometry,
-        materialIndex,
+        materialIndices,
+        materialKey: materialIndices.join(','),
         localMatrix: pieceMatrix,
       });
     });
@@ -117,19 +115,59 @@ export async function loadProductCatalog(assetPath) {
 
     variants.push({
       id: variantIndex,
-      name: sanitizeName(variantRoot.name, variantIndex),
-      category: inferCategory(variantRoot.name),
+      name: meta.name || sanitizeName(variantRoot.name, variantIndex),
+      category: meta.category || inferCategory(variantRoot.name),
+      optionId: meta.optionId || null,
+      signatureStyle: meta.signatureStyle || null,
       normalizedSize,
       pieces,
       sourceNodeName: variantRoot.name || null,
+      assetPath: meta.assetPath || null,
     });
-  });
+  };
 
-  cachedCatalog = {
+  const collectRoots = (root) => {
+    const roots = root.children.filter(child => countMeshes(child) > 0);
+    if (roots.length > 0) return roots;
+    return countMeshes(root) > 0 ? [root] : [];
+  };
+
+  if (Array.isArray(assetPath)) {
+    for (const option of assetPath) {
+      const gltf = await loader.loadAsync(option.heroProductAssetPath);
+      const root = gltf.scene;
+      root.updateWorldMatrix(true, true);
+      const variantRoot = collectRoots(root)[0];
+      if (!variantRoot) continue;
+
+      appendVariant(variantRoot, variants.length, {
+        name: option.heroLabel,
+        category: option.id,
+        optionId: option.id,
+        signatureStyle: option.signatureStyle,
+        assetPath: option.heroProductAssetPath,
+      });
+    }
+  } else {
+    const gltf = await loader.loadAsync(assetPath);
+    const root = gltf.scene;
+    root.updateWorldMatrix(true, true);
+
+    const roots = collectRoots(root);
+    roots.forEach((variantRoot, variantIndex) => {
+      appendVariant(variantRoot, variantIndex);
+    });
+  }
+
+  const catalog = {
     categories: [...new Set(variants.map(variant => variant.category))],
     materials,
     variants,
+    optionVariantMap: Object.fromEntries(
+      variants.filter(variant => variant.optionId).map(variant => [variant.optionId, variant.id]),
+    ),
   };
 
-  return cachedCatalog;
+  catalogCache.set(cacheKey, catalog);
+  return catalog;
 }

@@ -29,9 +29,12 @@
   --glass-blur:        16px;
 
   /* ── Brand Gradients ───────────────────────────────────── */
+  --gradient-boot:    radial-gradient(ellipse at 50% 54%, rgba(0, 164, 228, 0.14) 0%, rgba(0, 62, 126, 0.52) 32%, rgba(0, 26, 54, 0.82) 72%, rgba(0, 13, 26, 0.96) 100%);
   --gradient-idle:    radial-gradient(ellipse at 50% 58%, rgba(0, 62, 126, 0.78) 0%, rgba(0, 26, 54, 0.72) 44%, rgba(0, 13, 26, 0.84) 100%);
   --gradient-chaos:   linear-gradient(135deg, rgba(0, 26, 54, 0.78) 0%, rgba(0, 13, 26, 0.82) 25%, rgba(0, 62, 126, 0.6) 50%, rgba(0, 26, 54, 0.76) 75%, rgba(0, 0, 0, 0.9) 100%);
   --gradient-harmony: radial-gradient(ellipse at 50% 40%, rgba(0, 164, 228, 0.14) 0%, rgba(0, 62, 126, 0.56) 30%, rgba(0, 26, 54, 0.74) 65%, rgba(0, 0, 0, 0.88) 100%);
+  --gradient-pose-lost: radial-gradient(ellipse at 50% 48%, rgba(255, 255, 255, 0.08) 0%, rgba(0, 62, 126, 0.34) 28%, rgba(0, 13, 26, 0.88) 76%, rgba(0, 0, 0, 0.95) 100%);
+  --gradient-error: radial-gradient(ellipse at 50% 40%, rgba(255, 90, 83, 0.14) 0%, rgba(104, 24, 24, 0.54) 32%, rgba(34, 7, 12, 0.86) 68%, rgba(0, 0, 0, 0.94) 100%);
 
   /* ── Shadows ───────────────────────────────────────────── */
   --shadow-text-hero:   0px 4px 28px rgba(0, 13, 26, 0.88), 0px 2px 8px rgba(0, 0, 0, 0.65);

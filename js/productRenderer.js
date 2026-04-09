@@ -1,11 +1,11 @@
 // ═══════════════════════════════════════════════════════════
 //  productRenderer.js — Instanced rendering for active and
-//  static supermarket products from PRODUCTOS.glb
+//  static branded products with phase-based emphasis controls
 // ═══════════════════════════════════════════════════════════
 
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
+import { PHASE } from './config.js';
 import { envMap, scene } from './scene.js';
-import { DEFAULT_SELECTION_COLOR, PRODUCT_COLOR_VALUES } from './config.js';
 
 const dynamicBatches = new Map();
 const staticBatches = new Map();
@@ -18,36 +18,60 @@ const tmpQuat = new THREE.Quaternion();
 const tmpItemMatrix = new THREE.Matrix4();
 const tmpPieceMatrix = new THREE.Matrix4();
 const zeroScale = new THREE.Vector3(0.000001, 0.000001, 0.000001);
-const tmpColor = new THREE.Color();
+let activePhase = null;
+let activeSelection = null;
 
-function getColorValue(colorId) {
-  return PRODUCT_COLOR_VALUES[colorId] ?? PRODUCT_COLOR_VALUES[DEFAULT_SELECTION_COLOR];
+function isGlassLikeMaterial(material) {
+  const name = (material.name || '').toLowerCase();
+  return material.transmission > 0 || material.ior > 1 || material.thickness > 0 || name.includes('glass') || name.includes('bottle') || name.includes('liquid');
 }
 
-function createCleanMaterial(baseMaterial) {
+function createInstancedMaterial(baseMaterial, optionId = null) {
   const material = baseMaterial.clone();
-  if ('map' in material) material.map = null;
-  if ('alphaMap' in material) material.alphaMap = null;
-  if ('aoMap' in material) material.aoMap = null;
-  if ('bumpMap' in material) material.bumpMap = null;
-  if ('displacementMap' in material) material.displacementMap = null;
-  if ('emissiveMap' in material) material.emissiveMap = null;
-  if ('lightMap' in material) material.lightMap = null;
-  if ('metalnessMap' in material) material.metalnessMap = null;
-  if ('normalMap' in material) material.normalMap = null;
-  if ('roughnessMap' in material) material.roughnessMap = null;
-  if ('color' in material) material.color.setHex(0xffffff);
-  if ('emissive' in material) material.emissive.setHex(0x000000);
-  material.vertexColors = false;
-  if ('roughness' in material) material.roughness = 0.82;
-  if ('metalness' in material) material.metalness = 0.05;
-  material.transparent = false;
+  const glassLike = isGlassLikeMaterial(material);
+
+  if ('envMap' in material) {
+    material.envMap = envMap;
+  }
+
+  if (glassLike) {
+    if ('transmission' in material) material.transmission = 0;
+    if ('thickness' in material) material.thickness = 0;
+    if ('ior' in material) material.ior = 1.45;
+    if ('roughness' in material && typeof material.roughness === 'number') {
+      material.roughness = Math.max(material.roughness, 0.08);
+    }
+    if ('metalness' in material && typeof material.metalness === 'number') {
+      material.metalness = 0;
+    }
+
+    material.transparent = baseMaterial.opacity < 1 || baseMaterial.transparent;
+    material.opacity = baseMaterial.opacity < 1 ? baseMaterial.opacity : 0.96;
+    material.depthWrite = true;
+    material.side = THREE.FrontSide;
+
+    if ('envMapIntensity' in material) {
+      material.envMapIntensity = optionId === 'coca-cola' ? 0.08 : 0.16;
+    }
+
+    if (optionId === 'coca-cola' && material.color) {
+      material.color.multiplyScalar(0.42);
+    }
+  } else {
+    material.transparent = baseMaterial.transparent;
+    material.opacity = baseMaterial.opacity;
+    material.depthWrite = baseMaterial.depthWrite;
+    if ('envMapIntensity' in material && typeof material.envMapIntensity === 'number') {
+      material.envMapIntensity = Math.min(material.envMapIntensity, 0.35);
+    }
+  }
+
   material.needsUpdate = true;
   return material;
 }
 
-function createBatchKey(piece) {
-  return `${piece.geometry.uuid}|${piece.materialIndex}`;
+function createBatchKey(item, piece) {
+  return `${item.optionId || 'generic'}|${piece.geometry.uuid}|${piece.materialKey}`;
 }
 
 function createBatchMap(items, catalog, mode) {
@@ -55,20 +79,20 @@ function createBatchMap(items, catalog, mode) {
   for (const item of items) {
     const variant = catalog.variants[item.variantIndex];
     for (const piece of variant.pieces) {
-      const key = createBatchKey(piece);
+      const key = createBatchKey(item, piece);
       if (!specs.has(key)) {
-        const baseMaterial = catalog.materials[piece.materialIndex].clone();
-        const cleanMaterial = createCleanMaterial(baseMaterial);
-        cleanMaterial.envMap = envMap;
-        cleanMaterial.envMapIntensity = 0.45;
-        cleanMaterial.needsUpdate = true;
+        const baseMaterials = piece.materialIndices.map(index => catalog.materials[index]);
+        const instancedMaterial = baseMaterials.length === 1
+          ? createInstancedMaterial(baseMaterials[0], item.optionId)
+          : baseMaterials.map(material => createInstancedMaterial(material, item.optionId));
 
         specs.set(key, {
           key,
           geometry: piece.geometry,
-          material: cleanMaterial,
+          material: instancedMaterial,
           count: 0,
           mode,
+          optionId: item.optionId || null,
         });
       }
       specs.get(key).count += 1;
@@ -83,11 +107,11 @@ function instantiateBatches(specs, targetMap) {
     instancedMesh.instanceMatrix.setUsage(
       spec.mode === 'dynamic' ? THREE.DynamicDrawUsage : THREE.StaticDrawUsage,
     );
-    instancedMesh.castShadow = true;
-    instancedMesh.receiveShadow = true;
+    instancedMesh.castShadow = false;
+    instancedMesh.receiveShadow = false;
     instancedMesh.frustumCulled = false;
     scene.add(instancedMesh);
-    targetMap.set(spec.key, { mesh: instancedMesh, cursor: 0 });
+    targetMap.set(spec.key, { mesh: instancedMesh, cursor: 0, optionId: spec.optionId });
   }
 }
 
@@ -97,7 +121,7 @@ function registerHandles(items, catalog, batchMap, targetHandles) {
     const handles = [];
 
     for (const piece of variant.pieces) {
-      const key = createBatchKey(piece);
+      const key = createBatchKey(item, piece);
       const batch = batchMap.get(key);
       const slot = batch.cursor++;
       handles.push({
@@ -123,18 +147,21 @@ function writeHandles(handles, position, quaternion, scale, visible = true) {
   }
 }
 
-function colorHandles(handles, colorId) {
-  tmpColor.setHex(getColorValue(colorId));
-  for (const handle of handles) {
-    handle.mesh.setColorAt(handle.slot, tmpColor);
-  }
-}
-
 function finalizeBatchMatrices(batchMap, recomputeBounds = false) {
   for (const batch of batchMap.values()) {
     batch.mesh.instanceMatrix.needsUpdate = true;
-    if (batch.mesh.instanceColor) batch.mesh.instanceColor.needsUpdate = true;
     if (recomputeBounds && batch.mesh.computeBoundingSphere) batch.mesh.computeBoundingSphere();
+  }
+}
+
+function updateBatchAppearance(batchMap, phase, selectedOptionId) {
+  for (const batch of batchMap.values()) {
+    const materials = Array.isArray(batch.mesh.material) ? batch.mesh.material : [batch.mesh.material];
+
+    for (const material of materials) {
+      material.opacity = 1;
+      material.needsUpdate = true;
+    }
   }
 }
 
@@ -154,17 +181,22 @@ export function createProductRenderers(catalog, activeItems, staticItems) {
   registerHandles(staticItems, catalog, staticBatches, staticHandles);
 
   activeItems.forEach((item, index) => {
-    writeHandles(activeHandles[index], item.position, item.restQuaternion, item.scale, true);
-    colorHandles(activeHandles[index], item.colorId);
+    writeHandles(activeHandles[index], item.position, item.restQuaternion, item.renderScale ?? item.scale, true);
   });
 
   staticItems.forEach((item, index) => {
-    writeHandles(staticHandles[index], item.position, item.quaternion, item.scale, true);
-    colorHandles(staticHandles[index], item.colorId);
+    writeHandles(staticHandles[index], item.position, item.quaternion, item.renderScale ?? item.scale, true);
   });
 
   finalizeBatchMatrices(dynamicBatches, true);
   finalizeBatchMatrices(staticBatches, true);
+}
+
+export function setProductRenderState(phase, selectedOptionId = null) {
+  activePhase = phase;
+  activeSelection = selectedOptionId;
+  updateBatchAppearance(dynamicBatches, phase, selectedOptionId);
+  updateBatchAppearance(staticBatches, phase, selectedOptionId);
 }
 
 export function syncActiveProductTransforms(activeItems, bodies, visibleCount) {
@@ -177,7 +209,8 @@ export function syncActiveProductTransforms(activeItems, bodies, visibleCount) {
 
     tmpPos.set(body.position.x, body.position.y, body.position.z);
     tmpQuat.set(body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w);
-    writeHandles(handles, tmpPos, tmpQuat, activeItems[i].scale, i < visibleCount);
+    const isVisible = i < visibleCount;
+    writeHandles(handles, tmpPos, tmpQuat, activeItems[i].renderScale ?? activeItems[i].scale, isVisible);
   }
 
   finalizeBatchMatrices(dynamicBatches, false);

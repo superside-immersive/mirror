@@ -75,13 +75,24 @@
        Three.js canvas is behind this; this adds the phase-
        dependent color overlays as a semi-transparent layer.
        ═══════════════════════════════════════════════════════ -->
-  <div id="mock-3d-canvas" class="bg-idle" style="position:fixed;inset:0;z-index:1;pointer-events:none;opacity:0.35;background-size:400% 400%;"></div>
+  <div id="mock-3d-canvas" style="position:fixed;inset:0;z-index:1;pointer-events:none;opacity:0;background:transparent;"></div>
 
   <!-- ═══════════════════════════════════════════════════════
        DATA SCAN TRANSITION OVERLAY
        ═══════════════════════════════════════════════════════ -->
   <div id="data-transition-overlay">
     <div class="scan-line" id="scan-line"></div>
+  </div>
+
+  <div id="signature-overlay" aria-hidden="true">
+    <div class="signature-grid"></div>
+    <div class="signature-rings">
+      <div class="signature-ring ring-a"></div>
+      <div class="signature-ring ring-b"></div>
+    </div>
+    <div class="signature-bubbles">
+      <span></span><span></span><span></span><span></span><span></span><span></span>
+    </div>
   </div>
 
   <!-- ═══════════════════════════════════════════════════════
@@ -94,24 +105,27 @@
       <img class="brand-header-logo brand-header-logo-official" src="assets/amc-logo.svg" alt="Albertsons Media Collective logo">
     </div>
 
-    <!-- FLOATING BRAND LOGOS -->
-    <div id="brands-container" class="interactive">
-      <div class="brand-logo-container" id="logo-a">
-        <div class="data-ring"></div>
-        <div class="brand-logo brand-a" data-brand="white">
-          <span class="logo-label">BRAND A</span>
+    <!-- SELECTOR UI -->
+    <div id="selector-panel" class="interactive" aria-live="polite">
+      <div id="selector-prompt">SELECT ONE TO FORM YOUR MATCH.</div>
+      <div id="brands-container">
+        <div class="brand-logo-container" id="logo-a">
+          <div class="data-ring"></div>
+          <button class="brand-logo brand-kraft" data-option="kraft-heinz" type="button">
+            <span class="logo-label logo-label-fallback">Kraft Heinz</span>
+          </button>
         </div>
-      </div>
-      <div class="brand-logo-container" id="logo-b">
-        <div class="data-ring"></div>
-        <div class="brand-logo brand-b" data-brand="black">
-          <span class="logo-label">BRAND B</span>
+        <div class="brand-logo-container" id="logo-b">
+          <div class="data-ring"></div>
+          <button class="brand-logo brand-mondelez" data-option="mondelez" type="button">
+            <img class="brand-logo-image brand-logo-image-mondelez" src="assets/logos/MDLZ_Logo/MDLZ Logo Reversed RGB.png" alt="Mondelez logo">
+          </button>
         </div>
-      </div>
-      <div class="brand-logo-container" id="logo-c">
-        <div class="data-ring"></div>
-        <div class="brand-logo brand-c" data-brand="blue">
-          <span class="logo-label">BRAND C</span>
+        <div class="brand-logo-container" id="logo-c">
+          <div class="data-ring"></div>
+          <button class="brand-logo brand-coca" data-option="coca-cola" type="button">
+            <img class="brand-logo-image brand-logo-image-coca" src="assets/logos/coca-cola-company-white.svg" alt="Coca-Cola logo">
+          </button>
         </div>
       </div>
     </div>
@@ -121,6 +135,10 @@
       <h1 id="main-headline"></h1>
       <hr class="headline-rule">
       <p id="sub-headline"></p>
+      <div id="photo-cta">
+        <div class="photo-cta-headline">HOLD STILL.</div>
+        <div class="photo-cta-sub">Capture your match.</div>
+      </div>
     </div>
 
   </div>
@@ -130,10 +148,14 @@
        ═══════════════════════════════════════════════════════ -->
   <div id="dev-controls">
     <span class="dev-label">Scene:</span>
+    <button class="dev-btn" data-phase="0">0. BOOT</button>
     <button class="dev-btn" data-phase="1">1. IDLE</button>
     <button class="dev-btn" data-phase="2">2. CHAOS</button>
     <button class="dev-btn" data-phase="3">3. GESTURE</button>
     <button class="dev-btn dev-btn-primary" data-phase="4">4. HARMONY</button>
+    <button class="dev-btn" data-phase="5">5. POSE LOST</button>
+    <button class="dev-btn" data-phase="6">6. ERROR</button>
+    <span class="dev-status" id="dev-current-option">Option: none</span>
   </div>
 
   <!-- PHASE INDICATOR (subtle) -->

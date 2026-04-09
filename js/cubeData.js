@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════
 //  cubeData.js — Active product metadata and shelf placement
-//  using normalized variants from PRODUCTOS.glb
+//  using normalized variants from the branded hero GLBs
 // ═══════════════════════════════════════════════════════════
 
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
@@ -9,8 +9,9 @@ import {
   NUM_SHELVES, SHELF_X, SHELF_Z_BASE, SHELF_Y_MIN, SHELF_Y_MAX,
   SHELF_LENGTH, SHELF_DEPTH, PLANK_THICK,
   STATIC_SHELF_ITEMS, ACTIVE_SHELF_ROWS, STATIC_SHELF_ROWS, SHELF_GAP, SHELF_SETTLE_OFFSET,
-  PRODUCT_GLOBAL_SCALE, PRODUCT_COLOR_IDS,
+  PRODUCT_GLOBAL_SCALE,
 } from './config.js';
+import { getProductOptionForIndex } from './productOptions.js';
 
 // ─── Exported state ─────────────────────────────────────────
 export const cubeRand = [];         // active product metadata (body-capable + active shelf items)
@@ -32,10 +33,6 @@ function pickRandomVariant(catalog, category = null) {
     ? catalog.variants.filter(variant => variant.category === category)
     : catalog.variants;
   return pool[Math.floor(Math.random() * pool.length)] || catalog.variants[0];
-}
-
-function pickDistributedColor(index, salt = 0) {
-  return PRODUCT_COLOR_IDS[(index + salt) % PRODUCT_COLOR_IDS.length];
 }
 
 function computeUniformScale(variant, targetHeight, maxWidth, maxDepth) {
@@ -75,6 +72,7 @@ function rowScaleMultiplier(rowIndex, rowCount, frontBoost = 1.18, backScale = 0
 
 function rescaleItem(item, multiplier) {
   item.scale *= multiplier;
+  if (typeof item.renderScale === 'number') item.renderScale *= multiplier;
   item.w *= multiplier;
   item.h *= multiplier;
   item.d *= multiplier;
@@ -94,6 +92,23 @@ function createShelfYs() {
     shelfYs.push(SHELF_Y_MIN + s * (SHELF_Y_MAX - SHELF_Y_MIN) / (NUM_SHELVES - 1));
   }
   return shelfYs;
+}
+
+function createOffscreenHome(index) {
+  const lane = index % 4;
+  const spread = ((index * 0.61803398875) % 1) - 0.5;
+  const depth = rand(-1.2, 1.4);
+
+  switch (lane) {
+    case 0:
+      return new THREE.Vector3(-6.8 - rand(0, 1.2), spread * 5.8, depth);
+    case 1:
+      return new THREE.Vector3(6.8 + rand(0, 1.2), spread * 5.8, depth);
+    case 2:
+      return new THREE.Vector3(spread * 6.6, 4.8 + rand(0, 1.0), depth);
+    default:
+      return new THREE.Vector3(spread * 6.6, -4.8 - rand(0, 1.0), depth);
+  }
 }
 
 function distributeIndices(totalCount, totalShelves) {
@@ -148,7 +163,11 @@ function buildCategoryBins(totalShelves, categories) {
 
 function createActiveItemData(index, catalog) {
   const sph = randomOnSphere();
-  const variant = pickRandomVariant(catalog);
+  const option = getProductOptionForIndex(index);
+  const heroVariantId = catalog.optionVariantMap?.[option.id];
+  const variant = typeof heroVariantId === 'number'
+    ? catalog.variants[heroVariantId]
+    : pickRandomVariant(catalog, option.id);
 
   let seg = null;
   if (index < BODY_CUBES) {
@@ -158,13 +177,16 @@ function createActiveItemData(index, catalog) {
 
   const sizeBias = seg ? seg.sz : rand(0.85, 1.05);
   const targetHeight = rand(0.10, 0.22) * sizeBias;
-  const scale = computeUniformScale(variant, targetHeight, 0.28 * sizeBias, 0.26 * sizeBias) * rand(0.92, 1.08) * PRODUCT_GLOBAL_SCALE;
+  const bodyScaleMultiplier = index < BODY_CUBES ? (option.bodyScaleMultiplier || 1) : 1;
+  const scale = computeUniformScale(variant, targetHeight, 0.28 * sizeBias, 0.26 * sizeBias) * rand(0.92, 1.08) * PRODUCT_GLOBAL_SCALE * bodyScaleMultiplier;
 
   const data = {
     variantIndex: variant.id,
-    category: variant.category,
-    colorId: pickDistributedColor(index, variant.id),
+    category: option.id,
+    optionId: option.id,
+    signatureStyle: option.signatureStyle,
     scale,
+    renderScale: scale,
     ox: sph[0], oy: sph[1], oz: sph[2],
     w: variant.normalizedSize.x * scale,
     h: variant.normalizedSize.y * scale,
@@ -172,6 +194,7 @@ function createActiveItemData(index, catalog) {
     rx: (Math.random() - 0.5) * 0.6,
     ry: (Math.random() - 0.5) * 0.6,
     rz: (Math.random() - 0.5) * 0.6,
+    motionSeed: Math.random(),
     restQuaternion: new THREE.Quaternion(),
     position: new THREE.Vector3(),
   };
@@ -191,15 +214,19 @@ function createActiveItemData(index, catalog) {
 }
 
 function createStaticItemData(catalog, category, index) {
-  const variant = pickRandomVariant(catalog, category);
+  const variant = typeof catalog.optionVariantMap?.[category] === 'number'
+    ? catalog.variants[catalog.optionVariantMap[category]]
+    : pickRandomVariant(catalog, category);
   const targetHeight = rand(0.09, 0.22);
   const scale = computeUniformScale(variant, targetHeight, 0.32, 0.26) * rand(0.92, 1.05) * PRODUCT_GLOBAL_SCALE;
 
   return {
     variantIndex: variant.id,
-    category: variant.category,
-    colorId: pickDistributedColor(index, variant.id + 1),
+    category,
+    optionId: category,
+    signatureStyle: variant.signatureStyle || null,
     scale,
+    renderScale: scale,
     w: variant.normalizedSize.x * scale,
     h: variant.normalizedSize.y * scale,
     d: variant.normalizedSize.z * scale,
@@ -216,106 +243,24 @@ export function generateCubeData(catalog) {
   }
 }
 
-// ─── Generate shelf home positions for active products ─────
+// ─── Generate offscreen staging positions for active products ──
 export function generateShelfPositions() {
-  const shelfYs = createShelfYs();
-  const totalShelves = NUM_SHELVES * 2;
-  const activeCategories = [...new Set(cubeRand.map(item => item.category || 'box'))];
-  const { bins, shelfCategories } = buildCategoryBins(totalShelves, activeCategories);
-
   shelfHome.length = TOTAL_CUBES;
 
-  for (let s = 0; s < totalShelves; s++) {
-    const side = s < NUM_SHELVES ? -1 : 1;
-    const row = s < NUM_SHELVES ? s : s - NUM_SHELVES;
-    const shelfY = shelfYs[row];
-    const xCenter = side * SHELF_X;
-    const plankTopY = shelfY - PLANK_THICK / 2 + PLANK_THICK;
-    const shelfCategory = shelfCategories[s];
-
-    const zMargin = 0.16;
-    const rowXs = rowXBounds(side, ACTIVE_SHELF_ROWS, xCenter, 0.05);
-    const xRows = Array.from({ length: ACTIVE_SHELF_ROWS }, () => []);
-
-    const orderedIndices = bins[s].sort((a, b) => {
-      const aMatch = cubeRand[a].category === shelfCategory ? 0 : 1;
-      const bMatch = cubeRand[b].category === shelfCategory ? 0 : 1;
-      return aMatch - bMatch;
-    });
-
-    for (let i = 0; i < orderedIndices.length; i++) xRows[i % ACTIVE_SHELF_ROWS].push(orderedIndices[i]);
-
-    for (let r = 0; r < ACTIVE_SHELF_ROWS; r++) {
-      const rowX = rowXs[r];
-      const rowScale = rowScaleMultiplier(r, ACTIVE_SHELF_ROWS, 1.1, 0.92);
-      const rowItems = xRows[r].map(idx => {
-        const item = cubeRand[idx];
-        rescaleItem(item, rowScale);
-        applyShelfOrientationToItem(item);
-        return { idx, item };
-      });
-
-      for (let i = 0; i < rowItems.length; i++) {
-        const { idx, item } = rowItems[i];
-        const z = spreadZPosition(i, rowItems.length, zMargin, 0.045);
-        const pos = new THREE.Vector3(
-          rowX,
-          plankTopY + item.h / 2 - SHELF_SETTLE_OFFSET,
-          z,
-        );
-
-        shelfHome[idx] = pos;
-        item.position.copy(pos);
-        item.restQuaternion.copy(createAisleFacingQuaternion(side));
-      }
-    }
+  for (let i = 0; i < TOTAL_CUBES; i++) {
+    const item = cubeRand[i];
+    const pos = createOffscreenHome(i);
+    shelfHome[i] = pos;
+    item.position.copy(pos);
+    item.restQuaternion.copy(new THREE.Quaternion().setFromEuler(new THREE.Euler(
+      rand(-0.45, 0.45),
+      rand(-Math.PI, Math.PI),
+      rand(-0.35, 0.35),
+    )));
   }
 }
 
-// ─── Generate static decorative shelf fill ─────────────────
-export function generateStaticShelfItems(catalog) {
+// ─── No static shelf fill in webcam-first mode ─────────────
+export function generateStaticShelfItems(/* catalog */) {
   staticShelfItems.length = 0;
-
-  const shelfYs = createShelfYs();
-  const totalShelves = NUM_SHELVES * 2;
-  const bins = distributeIndices(STATIC_SHELF_ITEMS, totalShelves);
-  const shelfCategories = buildShelfCategoryOrder(catalog.categories, totalShelves);
-
-  for (let s = 0; s < totalShelves; s++) {
-    const side = s < NUM_SHELVES ? -1 : 1;
-    const row = s < NUM_SHELVES ? s : s - NUM_SHELVES;
-    const shelfY = shelfYs[row];
-    const xCenter = side * SHELF_X;
-    const plankTopY = shelfY - PLANK_THICK / 2 + PLANK_THICK;
-    const shelfCategory = shelfCategories[s];
-
-    const zMargin = 0.08;
-    const rowXs = rowXBounds(side, STATIC_SHELF_ROWS, xCenter, 0.02);
-    const xRows = Array.from({ length: STATIC_SHELF_ROWS }, () => []);
-
-    for (let i = 0; i < bins[s].length; i++) xRows[i % STATIC_SHELF_ROWS].push(bins[s][i]);
-
-    for (let r = 0; r < STATIC_SHELF_ROWS; r++) {
-      const rowX = rowXs[r];
-      const rowScale = rowScaleMultiplier(r, STATIC_SHELF_ROWS, 1.18, 0.82);
-      const rowItems = xRows[r].map((itemIndex) => {
-        const item = createStaticItemData(catalog, shelfCategory, itemIndex);
-        rescaleItem(item, rowScale);
-        applyShelfOrientationToItem(item);
-        return item;
-      });
-
-      for (let i = 0; i < rowItems.length; i++) {
-        const item = rowItems[i];
-        const z = spreadZPosition(i, rowItems.length, zMargin, 0.035);
-        item.position.set(
-          rowX,
-          plankTopY + item.h / 2 - SHELF_SETTLE_OFFSET,
-          z,
-        );
-        item.quaternion.copy(createAisleFacingQuaternion(side, 0.06));
-        staticShelfItems.push(item);
-      }
-    }
-  }
 }

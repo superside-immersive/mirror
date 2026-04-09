@@ -14,7 +14,7 @@ export const cubes = [];   // { body }
 export function initPhysics() {
   world = new CANNON.World({ gravity: new CANNON.Vec3(0, 0, 0) });
   world.solver.iterations = 1;
-  world.broadphase = new CANNON.NaiveBroadphase(world);
+  world.broadphase = new CANNON.SAPBroadphase(world);
   world.allowSleep = true;
   world.solver.tolerance = 0.5;
 

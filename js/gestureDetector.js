@@ -1,157 +1,184 @@
 // ═══════════════════════════════════════════════════════════
-//  gestureDetector.js — Detects gestures from MediaPipe landmarks
-//  and drives UI phase transitions with debounce/hysteresis
+//  gestureDetector.js — Hand raise detection and the source
+//  of truth phase state machine for the AMC mirror
 // ═══════════════════════════════════════════════════════════
 
 import {
-  PHASE, HAND_RAISE_Y_OFFSET,
-  PHASE_DEBOUNCE_MS, PHASE_EXIT_DELAY_MS, DEFAULT_SELECTION_COLOR,
+  PHASE,
+  HAND_RAISE_Y_OFFSET,
+  POSE_PRESENT_FRAMES,
+  POSE_LOST_FRAMES,
+  HAND_RAISE_FRAMES,
+  GESTURE_COOLDOWN_MS,
+  GESTURE_TIMEOUT_MS,
+  CHAOS_AUTO_GESTURE_MS,
+  POSE_LOST_RETURN_MS,
 } from './config.js';
-
-// ─── Hand Raise Detection ───────────────────────────────────
-// MediaPipe Y axis: negative is UP. If wrist.y < shoulder.y + offset → raised.
-// Landmarks: 11=L shoulder, 12=R shoulder, 15=L wrist, 16=R wrist
+import {
+  clearSelectedProductOption,
+  DEFAULT_PRODUCT_OPTION_ID,
+  selectProductOption,
+} from './productOptions.js';
 
 export function detectHandRaise(landmarks) {
   if (!landmarks || landmarks.length < 33) return { left: false, right: false };
 
   const lShoulder = landmarks[11];
   const rShoulder = landmarks[12];
-  const lWrist    = landmarks[15];
-  const rWrist    = landmarks[16];
+  const lElbow = landmarks[13];
+  const rElbow = landmarks[14];
+  const lWrist = landmarks[15];
+  const rWrist = landmarks[16];
 
   return {
-    left:  lWrist.y < lShoulder.y + HAND_RAISE_Y_OFFSET,
-    right: rWrist.y < rShoulder.y + HAND_RAISE_Y_OFFSET,
+    left: lWrist.y < lShoulder.y + HAND_RAISE_Y_OFFSET || lElbow.y < lShoulder.y + HAND_RAISE_Y_OFFSET,
+    right: rWrist.y < rShoulder.y + HAND_RAISE_Y_OFFSET || rElbow.y < rShoulder.y + HAND_RAISE_Y_OFFSET,
   };
 }
 
-// ─── Brand Selection Detection ──────────────────────────────
-// Check if a raised hand's wrist X position is near one of the
-// brand logos. Since we're in mirror mode, we map screen-relative
-// positions. The brands sit at roughly -0.3, 0, +0.3 in normalized X.
-
-const BRAND_X_POSITIONS = [
-  { id: 'white', x: -0.25 },   // Brand A (left)
-  { id: 'black', x:  0.00 },   // Brand B (center)
-  { id: 'blue',  x:  0.25 },   // Brand C (right)
-];
-const BRAND_SELECT_RADIUS = 0.18;   // how close wrist X must be to brand center
-
-export function detectBrandSelection(landmarks) {
-  if (!landmarks || landmarks.length < 33) return null;
-
-  const hands = detectHandRaise(landmarks);
-  if (!hands.left && !hands.right) return null;
-
-  // Use the raised hand's wrist position
-  // In mirrored view, x is negated. MediaPipe x is 0..1 range.
-  const wrist = hands.right ? landmarks[16] : landmarks[15];
-  const wx = -wrist.x;   // mirror
-
-  for (const brand of BRAND_X_POSITIONS) {
-    if (Math.abs(wx - brand.x) < BRAND_SELECT_RADIUS) {
-      return brand.id;
-    }
-  }
-  return null;
-}
-
-// ─── Phase State Machine ────────────────────────────────────
-// Manages transitions between phases with debounce to prevent flickering.
-// Rules:
-//   No pose detected → IDLE
-//   Pose detected, no gesture → CHAOS
-//   Hand raised → GESTURE
-//   Brand button clicked → HARMONY (stays locked until reset)
-
 export class PhaseStateMachine {
   constructor() {
-    this.currentPhase  = PHASE.IDLE;
-    this.pendingPhase  = PHASE.IDLE;
-    this.pendingStart  = 0;
-    this.selectedBrand = null;
-    this.harmonyLocked = false;   // once HARMONY triggers, stay locked until pose lost
+    this.ready = false;
+    this.currentPhase = PHASE.BOOT;
+    this.phaseEnteredAt = performance.now();
+    this.selectedOptionId = DEFAULT_PRODUCT_OPTION_ID;
+    this.errorMessage = null;
+    this.presentFrames = 0;
+    this.lostFrames = 0;
+    this.handRaiseFrames = 0;
+    this.gestureCooldownUntil = 0;
+    this.harmonyLocked = false;
   }
 
-  /**
-   * Update the state machine. Call this every frame.
-   * @param {boolean} poseActive - Is a body currently detected?
-   * @param {object|null} landmarks - Smoothed world landmarks
-   * @returns {{ phase: number, changed: boolean, selectedBrand: string|null }}
-   */
-  update(poseActive, landmarks) {
+  getTimeInPhase(now = performance.now()) {
+    return now - this.phaseEnteredAt;
+  }
+
+  markReady() {
+    this.ready = true;
+    return this.forcePhase(PHASE.IDLE, this.selectedOptionId);
+  }
+
+  setError(message) {
+    this.ready = true;
+    this.errorMessage = message;
+    return this.forcePhase(PHASE.ERROR, this.selectedOptionId, message);
+  }
+
+  selectOption(optionId) {
+    const option = selectProductOption(optionId);
+    this.selectedOptionId = option.id;
+    this.harmonyLocked = true;
+    return this.forcePhase(PHASE.HARMONY, option.id);
+  }
+
+  update(poseDetected, landmarks) {
     const now = performance.now();
-    let targetPhase = PHASE.IDLE;
-    let brand = null;
 
-    if (this.harmonyLocked) {
-      // Stay in HARMONY once triggered via button click
-      targetPhase = PHASE.HARMONY;
-      brand = this.selectedBrand;
-    } else if (!poseActive) {
-      targetPhase = PHASE.IDLE;
-      this.selectedBrand = null;
+    if (!this.ready) {
+      return {
+        phase: this.currentPhase,
+        changed: false,
+        selectedOptionId: this.selectedOptionId,
+        errorMessage: this.errorMessage,
+      };
+    }
+
+    if (this.currentPhase === PHASE.ERROR) {
+      return {
+        phase: this.currentPhase,
+        changed: false,
+        selectedOptionId: this.selectedOptionId,
+        errorMessage: this.errorMessage,
+      };
+    }
+
+    if (poseDetected) {
+      this.presentFrames += 1;
+      this.lostFrames = 0;
     } else {
-      // Pose is active — check gestures
+      this.lostFrames += 1;
+      this.presentFrames = 0;
+      this.handRaiseFrames = 0;
+    }
+
+    const stablePose = this.presentFrames >= POSE_PRESENT_FRAMES;
+    const stablePoseLost = this.lostFrames >= POSE_LOST_FRAMES;
+
+    if (stablePose && landmarks) {
       const hands = detectHandRaise(landmarks);
-      const anyHandRaised = hands.left || hands.right;
-
-      if (anyHandRaised) {
-        // Hand raised → GESTURE only.
-        // HARMONY is triggered exclusively by clicking brand buttons.
-        targetPhase = PHASE.GESTURE;
-      } else {
-        targetPhase = PHASE.CHAOS;
-      }
+      this.handRaiseFrames = (hands.left || hands.right) ? this.handRaiseFrames + 1 : 0;
+    } else {
+      this.handRaiseFrames = 0;
     }
 
-    // Debounce logic
-    if (targetPhase !== this.pendingPhase) {
-      this.pendingPhase = targetPhase;
-      this.pendingStart = now;
+    let targetPhase = this.currentPhase;
+
+    if (stablePoseLost) {
+      targetPhase = this.currentPhase === PHASE.POSE_LOST && this.getTimeInPhase(now) >= POSE_LOST_RETURN_MS
+        ? PHASE.IDLE
+        : (this.currentPhase === PHASE.IDLE ? PHASE.IDLE : PHASE.POSE_LOST);
+    } else if (!stablePose) {
+      targetPhase = this.currentPhase === PHASE.IDLE ? PHASE.IDLE : this.currentPhase;
+    } else if (this.harmonyLocked) {
+      targetPhase = PHASE.HARMONY;
+    } else if (this.currentPhase === PHASE.GESTURE && this.getTimeInPhase(now) >= GESTURE_TIMEOUT_MS) {
+      targetPhase = PHASE.CHAOS;
+      this.gestureCooldownUntil = now + GESTURE_COOLDOWN_MS;
+    } else if (this.currentPhase === PHASE.CHAOS && now >= this.gestureCooldownUntil && this.getTimeInPhase(now) >= CHAOS_AUTO_GESTURE_MS) {
+      targetPhase = PHASE.GESTURE;
+    } else if (now >= this.gestureCooldownUntil && this.handRaiseFrames >= HAND_RAISE_FRAMES) {
+      targetPhase = PHASE.GESTURE;
+    } else {
+      targetPhase = PHASE.CHAOS;
     }
 
-    const debounce = targetPhase < this.currentPhase
-      ? PHASE_EXIT_DELAY_MS    // going down takes longer (hysteresis)
-      : PHASE_DEBOUNCE_MS;     // going up is faster
-
-    const changed = (
-      this.pendingPhase !== this.currentPhase &&
-      (now - this.pendingStart) >= debounce
-    );
-
-    if (changed) {
-      this.currentPhase  = this.pendingPhase;
-      this.selectedBrand = brand;
-
-      if (this.currentPhase === PHASE.HARMONY && brand) {
-        this.harmonyLocked = true;
+    if (targetPhase !== this.currentPhase) {
+      if (targetPhase === PHASE.IDLE) {
+        clearSelectedProductOption();
       }
+      return this.forcePhase(targetPhase, this.selectedOptionId, this.errorMessage);
     }
 
     return {
-      phase:         this.currentPhase,
-      changed,
-      selectedBrand: this.currentPhase === PHASE.HARMONY ? (this.selectedBrand || DEFAULT_SELECTION_COLOR) : null,
+      phase: this.currentPhase,
+      changed: false,
+      selectedOptionId: this.selectedOptionId,
+      errorMessage: this.errorMessage,
     };
   }
 
-  /** Force a specific phase (for debug buttons) */
-  forcePhase(phase, brand = null) {
+  forcePhase(phase, optionId = this.selectedOptionId, errorMessage = this.errorMessage) {
     const changed = this.currentPhase !== phase;
-    this.currentPhase  = phase;
-    this.pendingPhase  = phase;
-    this.selectedBrand = brand;
+    this.currentPhase = phase;
+    this.phaseEnteredAt = performance.now();
+    this.selectedOptionId = optionId || DEFAULT_PRODUCT_OPTION_ID;
+    this.errorMessage = errorMessage || null;
     this.harmonyLocked = phase === PHASE.HARMONY;
-    return { phase, changed, selectedBrand: brand };
+
+    if (phase === PHASE.IDLE) {
+      this.presentFrames = 0;
+      this.lostFrames = 0;
+      this.handRaiseFrames = 0;
+    }
+
+    return {
+      phase,
+      changed,
+      selectedOptionId: this.selectedOptionId,
+      errorMessage: this.errorMessage,
+    };
   }
 
-  /** Reset to idle */
   reset() {
-    this.currentPhase  = PHASE.IDLE;
-    this.pendingPhase  = PHASE.IDLE;
-    this.selectedBrand = null;
+    this.ready = false;
+    this.currentPhase = PHASE.BOOT;
+    this.phaseEnteredAt = performance.now();
+    this.selectedOptionId = DEFAULT_PRODUCT_OPTION_ID;
+    this.errorMessage = null;
+    this.presentFrames = 0;
+    this.lostFrames = 0;
+    this.handRaiseFrames = 0;
     this.harmonyLocked = false;
   }
 }
