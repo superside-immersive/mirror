@@ -115,15 +115,8 @@ export class PhaseStateMachine {
       targetPhase = this.currentPhase === PHASE.IDLE ? PHASE.IDLE : this.currentPhase;
     } else if (this.harmonyLocked) {
       targetPhase = PHASE.HARMONY;
-    } else if (this.currentPhase === PHASE.GESTURE && this.getTimeInPhase(now) >= GESTURE_TIMEOUT_MS) {
-      targetPhase = PHASE.CHAOS;
-      this.gestureCooldownUntil = now + GESTURE_COOLDOWN_MS;
-    } else if (this.currentPhase === PHASE.CHAOS && now >= this.gestureCooldownUntil && this.getTimeInPhase(now) >= CHAOS_AUTO_GESTURE_MS) {
-      targetPhase = PHASE.GESTURE;
-    } else if (now >= this.gestureCooldownUntil && this.handRaiseFrames >= HAND_RAISE_FRAMES) {
-      targetPhase = PHASE.GESTURE;
     } else {
-      targetPhase = PHASE.CHAOS;
+      targetPhase = PHASE.GESTURE;
     }
 
     if (targetPhase !== this.currentPhase) {

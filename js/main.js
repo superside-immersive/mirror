@@ -40,11 +40,13 @@ function setupDebugControls() {
 
   if (isDebug) {
     controls.classList.add('visible');
+    document.body.classList.add('debug-ui');
   }
 
   window.addEventListener('keydown', (event) => {
     if (event.key.toLowerCase() === 'd') {
       controls.classList.toggle('visible');
+      document.body.classList.toggle('debug-ui');
     }
   });
 

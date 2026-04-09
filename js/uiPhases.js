@@ -237,7 +237,7 @@ function triggerGesture(previousPhase) {
     startTechGlow();
     showTextWithOverlay(
       'HARNESS THE <span class="text-accent">DATA.</span>',
-      'Raise your hand. Select a brand and redirect its attraction to your ideal buyer.'
+      'Raise your hand.<br>Select a brand.'
     );
     return;
   }
@@ -251,7 +251,7 @@ function triggerGesture(previousPhase) {
   }, () => {
     showTextWithOverlay(
       'HARNESS THE <span class="text-accent">DATA.</span>',
-      'Raise your hand. Select a brand and redirect its attraction to your ideal buyer.'
+      'Raise your hand.<br>Select a brand.'
     );
   });
 }
