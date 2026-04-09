@@ -14,28 +14,6 @@
   <link rel="stylesheet" href="css/brand-tokens.css">
   <link rel="stylesheet" href="css/ui-styles.css">
 
-  <!-- Tailwind CSS (utility layer) -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            amc: {
-              blue:    '#003E7E',
-              navy:    '#001A36',
-              cyan:    '#00A4E4',
-              red:     '#E1251B',
-            }
-          },
-          fontFamily: {
-            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-          }
-        }
-      }
-    }
-  </script>
-
   <script type="importmap">
     {
       "imports": {
@@ -64,6 +42,7 @@
        FPS COUNTER
        ═══════════════════════════════════════════════════════ -->
   <div id="fps"></div>
+    <div id="perf-hud"></div>
 
   <!-- ═══════════════════════════════════════════════════════
        HIDDEN WEBCAM

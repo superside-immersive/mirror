@@ -7,6 +7,7 @@
 import { applyPhaseState }                 from './appState.js';
 import {
   STIFFNESS, MAX_SPEED, SPAWN_RATE,
+  PERF_HUD_UPDATE_MS,
   TOTAL_CUBES, BODY_CUBES, PHASE,
 } from './config.js';
 import { cubeRand, shelfHome }              from './cubeData.js';
@@ -41,9 +42,60 @@ function getVectorLengthSq(vec) {
 
 // FPS meter
 let fpsFrames = 0, fpsLast = performance.now(), fpsCurrent = 0;
+let perfHudLast = performance.now();
+let fpsEl = null;
+let perfHudEl = null;
+
+const loopPerfState = {
+  phaseMs: 0,
+  driveMs: 0,
+  physicsMs: 0,
+  syncMs: 0,
+  renderMs: 0,
+  frameMs: 0,
+};
+
+const defaultPosePerfState = {
+  inferenceMs: 0,
+  targetMs: 0,
+  poseFps: 0,
+  captureWidth: 0,
+  captureHeight: 0,
+  captureFps: 0,
+  interpolating: false,
+  blendAlpha: 1,
+};
 
 // Export for debug controls
 export { phaseStateMachine };
+
+function updatePerfHud(nowMs, posePerf = defaultPosePerfState) {
+  fpsEl ??= document.getElementById('fps');
+  perfHudEl ??= document.getElementById('perf-hud');
+
+  fpsFrames++;
+  if (nowMs - fpsLast >= 500) {
+    fpsCurrent = Math.round(fpsFrames / ((nowMs - fpsLast) / 1000));
+    fpsFrames = 0;
+    fpsLast = nowMs;
+    if (fpsEl) fpsEl.textContent = fpsCurrent + ' FPS';
+  }
+
+  if (!perfHudEl || nowMs - perfHudLast < PERF_HUD_UPDATE_MS) return;
+
+  const cameraLabel = posePerf.captureWidth && posePerf.captureHeight
+    ? `${posePerf.captureWidth}x${posePerf.captureHeight}@${Math.round(posePerf.captureFps || 0) || '?'}fps`
+    : 'camera off';
+  const blendPct = Math.round((posePerf.blendAlpha ?? 1) * 100);
+
+  perfHudEl.textContent = [
+    `pose ${posePerf.inferenceMs.toFixed(1)}ms | targets ${posePerf.targetMs.toFixed(1)}ms | rate ${posePerf.poseFps}Hz | ${cameraLabel}`,
+    `fsm ${loopPerfState.phaseMs.toFixed(1)} | drive ${loopPerfState.driveMs.toFixed(1)} | phys ${loopPerfState.physicsMs.toFixed(1)} | sync ${loopPerfState.syncMs.toFixed(1)} | render ${loopPerfState.renderMs.toFixed(1)}`,
+    `frame ${loopPerfState.frameMs.toFixed(1)}ms | blend ${blendPct}%${posePerf.interpolating ? ' interp' : ''}`,
+  ].join('\n');
+
+  perfHudLast = nowMs;
+}
 
 function getSignatureAdjustment(item, context) {
   switch (item.signatureStyle) {
@@ -83,19 +135,22 @@ function getBodyYBounds(bodyTargets) {
 export function animate() {
   requestAnimationFrame(animate);
 
+  const frameStart = performance.now();
   const dt   = Math.min(clock.getDelta(), 0.05);
   const time = clock.getElapsedTime();
 
   // ── 1. Pose Detection ──
-  detectPose();
+  const posePerf = detectPose(frameStart) || poseState.perf || defaultPosePerfState;
 
   // ── 2. Gesture Detection → Phase Transitions ──
+  const phaseStart = performance.now();
   const { poseActive, bodyTargets, currentLandmarks } = poseState;
   const result = phaseStateMachine.update(poseActive, currentLandmarks);
   const selectedOptionId = result.phase === PHASE.HARMONY ? result.selectedOptionId : null;
   if (result.changed) {
     applyPhaseState(result);
   }
+  loopPerfState.phaseMs = performance.now() - phaseStart;
 
   // ── 3. Progressive cube spawn ──
   if (spawnCount < TOTAL_CUBES) {
@@ -107,6 +162,7 @@ export function animate() {
   const harmonyElapsedMs = needsHarmonyBounds ? phaseStateMachine.getTimeInPhase() : 0;
 
   // ── 4. Drive each cube toward its target ──
+  const driveStart = performance.now();
   for (let i = 0; i < spawnCount; i++) {
     const { body } = cubes[i];
     const item = cubeRand[i];
@@ -235,24 +291,25 @@ export function animate() {
       bodyAngularVelocity.set(0, 0, 0);
     }
   }
+  loopPerfState.driveMs = performance.now() - driveStart;
 
   // ── 5. Step physics ──
+  const physicsStart = performance.now();
   world.step(1 / 60, dt, 1);
+  loopPerfState.physicsMs = performance.now() - physicsStart;
 
   // ── 6. Sync instanced product transforms from physics bodies ──
+  const syncStart = performance.now();
   syncActiveProductTransforms(cubeRand, cubes, spawnCount);
+  loopPerfState.syncMs = performance.now() - syncStart;
 
   // ── 7. Render ──
+  const renderStart = performance.now();
   renderer.render(scene, camera);
+  const renderEnd = performance.now();
+  loopPerfState.renderMs = renderEnd - renderStart;
+  loopPerfState.frameMs = renderEnd - frameStart;
 
-  // ── 8. FPS counter ──
-  fpsFrames++;
-  const now = performance.now();
-  if (now - fpsLast >= 500) {
-    fpsCurrent = Math.round(fpsFrames / ((now - fpsLast) / 1000));
-    fpsFrames = 0;
-    fpsLast = now;
-    const el = document.getElementById('fps');
-    if (el) el.textContent = fpsCurrent + ' FPS';
-  }
+  // ── 8. FPS + frame timings ──
+  updatePerfHud(renderEnd, posePerf);
 }

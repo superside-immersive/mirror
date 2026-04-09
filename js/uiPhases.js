@@ -102,8 +102,6 @@ function hideText(dur = 1.0) {
     .to(_blurOverlay(), {
       autoAlpha: 0,
       backgroundColor: 'rgba(0, 164, 228, 0.045)',
-      backdropFilter: 'blur(0px)',
-      webkitBackdropFilter: 'blur(0px)',
       duration: dur,
       ease: 'power2.inOut',
     }, 0);
@@ -131,8 +129,6 @@ function showTextWithOverlay(headlineHTML, subHTML) {
     .to(blurOverlay, {
       autoAlpha: 1,
       backgroundColor: 'rgba(0, 18, 38, 0.08)',
-      backdropFilter: 'blur(0px)',
-      webkitBackdropFilter: 'blur(0px)',
       duration: OVERLAY_FADE_DUR,
       ease: 'power2.out',
     }, 0)

@@ -26,6 +26,14 @@ export const CAMERA_FOV = 60;
 export const CAMERA_Z = 5.5;
 export const BODY_TARGET_Z = 0;
 export const BODY_DEPTH_SCALE = 0.85;
+export const WEBCAM_CAPTURE_WIDTH = 480;
+export const WEBCAM_CAPTURE_HEIGHT = 360;
+export const WEBCAM_CAPTURE_MAX_WIDTH = 640;
+export const WEBCAM_CAPTURE_MAX_HEIGHT = 480;
+export const WEBCAM_CAPTURE_FPS = 24;
+export const POSE_DETECTION_FPS = 24;
+export const POSE_INTERPOLATION_MS = 42;
+export const PERF_HUD_UPDATE_MS = 250;
 
 // ─── Assets & Product Density ──────────────────────────────
 export const PRODUCT_GLOBAL_SCALE = 3.29;

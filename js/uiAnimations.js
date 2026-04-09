@@ -45,14 +45,12 @@ export function playSceneTransition(callback, onComplete) {
 
   tl.to(dataOverlay, {
     autoAlpha: 1,
-    backdropFilter: 'blur(0px)',
     duration: 0.16,
     ease: 'power2.inOut',
   })
     .call(callback)
     .to(dataOverlay, {
       autoAlpha: 0,
-      backdropFilter: 'blur(0px)',
       duration: 0.24,
       ease: 'power2.inOut',
     }, '+=0.04');
@@ -139,7 +137,6 @@ export function animateHarmony(selectedOptionId) {
   tl.to(dataOverlay, {
     autoAlpha: 1,
     backgroundColor: option.colorTheme.glow,
-    backdropFilter: 'blur(18px)',
     duration: 0.15,
   })
     .call(() => {
@@ -167,7 +164,6 @@ export function animateHarmony(selectedOptionId) {
     .to(dataOverlay, {
       autoAlpha: 0,
       backgroundColor: 'rgba(0, 164, 228, 0.08)',
-      backdropFilter: 'blur(0px)',
       duration: 0.8,
       ease: 'power2.out',
     }, '+=0.05');
