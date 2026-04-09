@@ -14,11 +14,7 @@ import {
   CHAOS_AUTO_GESTURE_MS,
   POSE_LOST_RETURN_MS,
 } from './config.js';
-import {
-  clearSelectedProductOption,
-  DEFAULT_PRODUCT_OPTION_ID,
-  selectProductOption,
-} from './productOptions.js';
+import { DEFAULT_PRODUCT_OPTION_ID } from './productOptions.js';
 
 export function detectHandRaise(landmarks) {
   if (!landmarks || landmarks.length < 33) return { left: false, right: false };
@@ -41,7 +37,7 @@ export class PhaseStateMachine {
     this.ready = false;
     this.currentPhase = PHASE.BOOT;
     this.phaseEnteredAt = performance.now();
-    this.selectedOptionId = DEFAULT_PRODUCT_OPTION_ID;
+    this.selectedOptionId = null;
     this.errorMessage = null;
     this.presentFrames = 0;
     this.lostFrames = 0;
@@ -56,7 +52,7 @@ export class PhaseStateMachine {
 
   markReady() {
     this.ready = true;
-    return this.forcePhase(PHASE.IDLE, this.selectedOptionId);
+    return this.forcePhase(PHASE.IDLE, null);
   }
 
   setError(message) {
@@ -66,10 +62,9 @@ export class PhaseStateMachine {
   }
 
   selectOption(optionId) {
-    const option = selectProductOption(optionId);
-    this.selectedOptionId = option.id;
+    this.selectedOptionId = optionId || DEFAULT_PRODUCT_OPTION_ID;
     this.harmonyLocked = true;
-    return this.forcePhase(PHASE.HARMONY, option.id);
+    return this.forcePhase(PHASE.HARMONY, this.selectedOptionId);
   }
 
   update(poseDetected, landmarks) {
@@ -115,9 +110,7 @@ export class PhaseStateMachine {
     let targetPhase = this.currentPhase;
 
     if (stablePoseLost) {
-      targetPhase = this.currentPhase === PHASE.POSE_LOST && this.getTimeInPhase(now) >= POSE_LOST_RETURN_MS
-        ? PHASE.IDLE
-        : (this.currentPhase === PHASE.IDLE ? PHASE.IDLE : PHASE.POSE_LOST);
+      targetPhase = PHASE.IDLE;
     } else if (!stablePose) {
       targetPhase = this.currentPhase === PHASE.IDLE ? PHASE.IDLE : this.currentPhase;
     } else if (this.harmonyLocked) {
@@ -134,9 +127,6 @@ export class PhaseStateMachine {
     }
 
     if (targetPhase !== this.currentPhase) {
-      if (targetPhase === PHASE.IDLE) {
-        clearSelectedProductOption();
-      }
       return this.forcePhase(targetPhase, this.selectedOptionId, this.errorMessage);
     }
 
@@ -152,7 +142,7 @@ export class PhaseStateMachine {
     const changed = this.currentPhase !== phase;
     this.currentPhase = phase;
     this.phaseEnteredAt = performance.now();
-    this.selectedOptionId = optionId || DEFAULT_PRODUCT_OPTION_ID;
+    this.selectedOptionId = phase === PHASE.IDLE ? null : (optionId ?? this.selectedOptionId ?? null);
     this.errorMessage = errorMessage || null;
     this.harmonyLocked = phase === PHASE.HARMONY;
 
@@ -174,7 +164,7 @@ export class PhaseStateMachine {
     this.ready = false;
     this.currentPhase = PHASE.BOOT;
     this.phaseEnteredAt = performance.now();
-    this.selectedOptionId = DEFAULT_PRODUCT_OPTION_ID;
+    this.selectedOptionId = null;
     this.errorMessage = null;
     this.presentFrames = 0;
     this.lostFrames = 0;

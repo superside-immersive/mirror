@@ -1,55 +1,96 @@
 // ═══════════════════════════════════════════════════════════
-//  physics.js — Cannon-es physics world & proxy body creation
+//  physics.js — Lightweight motion integrator for proxy
+//  bodies used by the interactive product cloud
 // ═══════════════════════════════════════════════════════════
 
-import * as CANNON from 'https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js';
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
 import { TOTAL_CUBES } from './config.js';
 import { cubeRand, shelfHome } from './cubeData.js';
+
+const BODY_SLEEPING = 2;
+const tmpAxis = new THREE.Vector3();
+const tmpRotation = new THREE.Quaternion();
+
+class SimpleBody {
+  constructor({ position, quaternion, linearDamping, angularDamping }) {
+    this.position = position.clone();
+    this.quaternion = quaternion.clone();
+    this.velocity = new THREE.Vector3();
+    this.angularVelocity = new THREE.Vector3();
+    this.linearDamping = linearDamping;
+    this.angularDamping = angularDamping;
+    this.sleepState = BODY_SLEEPING;
+  }
+
+  wakeUp() {
+    this.sleepState = 0;
+  }
+
+  sleep() {
+    this.sleepState = BODY_SLEEPING;
+    this.velocity.set(0, 0, 0);
+    this.angularVelocity.set(0, 0, 0);
+  }
+}
+
+class SimpleWorld {
+  constructor() {
+    this.bodies = [];
+  }
+
+  addBody(body) {
+    this.bodies.push(body);
+  }
+
+  step(fixedTimeStep = 1 / 60, deltaTime = fixedTimeStep) {
+    const stepDt = Number.isFinite(deltaTime) && deltaTime > 0 ? deltaTime : fixedTimeStep;
+    const dampingScale = stepDt * 60;
+
+    for (const body of this.bodies) {
+      if (body.sleepState === BODY_SLEEPING) continue;
+
+      body.position.addScaledVector(body.velocity, stepDt);
+
+      const angularSpeedSq = body.angularVelocity.lengthSq();
+      if (angularSpeedSq > 1e-8) {
+        const angularSpeed = Math.sqrt(angularSpeedSq);
+        tmpAxis.copy(body.angularVelocity).multiplyScalar(1 / angularSpeed);
+        tmpRotation.setFromAxisAngle(tmpAxis, angularSpeed * stepDt);
+        body.quaternion.multiply(tmpRotation).normalize();
+      }
+
+      const linearDamping = Math.max(0, 1 - Math.min(0.95, body.linearDamping * dampingScale));
+      const angularDamping = Math.max(0, 1 - Math.min(0.95, body.angularDamping * dampingScale));
+      body.velocity.multiplyScalar(linearDamping);
+      body.angularVelocity.multiplyScalar(angularDamping);
+    }
+  }
+}
 
 // ─── Exported state ─────────────────────────────────────────
 export let world;
 export const cubes = [];   // { body }
 
-// ─── Initialize Cannon-es physics ───────────────────────────
+// ─── Initialize lightweight physics ────────────────────────
 export function initPhysics() {
-  world = new CANNON.World({ gravity: new CANNON.Vec3(0, 0, 0) });
-  world.solver.iterations = 1;
-  world.broadphase = new CANNON.SAPBroadphase(world);
-  world.allowSleep = true;
-  world.solver.tolerance = 0.5;
-
-  world.defaultContactMaterial.friction    = 0;
-  world.defaultContactMaterial.restitution = 0;
+  world = new SimpleWorld();
 }
 
 // ─── Create proxy bodies for all active items ───────────────
 export function createCubes() {
-  const cannonMat  = new CANNON.Material('product-proxy');
+  cubes.length = 0;
 
   for (let i = 0; i < TOTAL_CUBES; i++) {
     const d = cubeRand[i];
-
     const home = shelfHome[i];
-    const body = new CANNON.Body({
-      mass: 1,
-      shape: new CANNON.Box(new CANNON.Vec3(d.w / 2, d.h / 2, d.d / 2)),
-      material: cannonMat,
-      linearDamping:  0.5,
+    const body = new SimpleBody({
+      position: home,
+      quaternion: d.restQuaternion,
+      linearDamping: 0.5,
       angularDamping: 0.7,
-      sleepSpeedLimit: 0.2,
-      sleepTimeLimit:  0.3,
-      collisionFilterGroup: 0,   // no collision group
-      collisionFilterMask:  0,   // collide with nothing
-      position: new CANNON.Vec3(home.x, home.y, home.z),
     });
-    body.quaternion.set(
-      d.restQuaternion.x,
-      d.restQuaternion.y,
-      d.restQuaternion.z,
-      d.restQuaternion.w,
-    );
-    world.addBody(body);
 
+    world.addBody(body);
     cubes.push({ body });
   }
 }

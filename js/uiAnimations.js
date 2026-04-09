@@ -11,17 +11,12 @@ let headline;
 let subHeadline;
 let headlineRule;
 let dataOverlay;
-let scanLine;
 let selectorPanel;
 let brandButtons;
 
 let floatAnim = null;
-let ringAnim = null;
-let glowAnim = null;
 
 function killFloatAnim() { if (floatAnim) { floatAnim.kill(); floatAnim = null; } }
-function killRingAnim() { if (ringAnim) { ringAnim.kill(); ringAnim = null; } }
-function killGlowAnim() { if (glowAnim) { glowAnim.kill(); glowAnim = null; } }
 
 function clearButtonState() {
   brandButtons.forEach(button => {
@@ -35,7 +30,6 @@ export function initUIAnimations() {
   subHeadline = document.getElementById('sub-headline');
   headlineRule = document.querySelector('.headline-rule');
   dataOverlay = document.getElementById('data-transition-overlay');
-  scanLine = document.getElementById('scan-line');
   selectorPanel = document.getElementById('selector-panel');
   brandButtons = [...document.querySelectorAll('.brand-logo')];
 
@@ -55,11 +49,6 @@ export function playSceneTransition(callback, onComplete) {
     duration: 0.16,
     ease: 'power2.inOut',
   })
-    .fromTo(scanLine,
-      { y: '-10vh' },
-      { y: '110vh', duration: 0.42, ease: 'power2.inOut' },
-      '<'
-    )
     .call(callback)
     .to(dataOverlay, {
       autoAlpha: 0,
@@ -99,28 +88,11 @@ export function startFloatingAnimation() {
 }
 
 export function startRingPulse() {
-  killRingAnim();
-  gsap.set('.data-ring', { opacity: 0.4, scale: 1 });
-  ringAnim = gsap.to('.data-ring', {
-    scale: 1.5,
-    opacity: 0,
-    duration: 1.4,
-    stagger: 0.16,
-    repeat: -1,
-    ease: 'power2.out',
-  });
+  // Removed: data-ring elements no longer exist
 }
 
 export function startTechGlow() {
-  killGlowAnim();
-  glowAnim = gsap.to('.brand-logo', {
-    boxShadow: '0 0 35px rgba(0,164,228,0.34), inset 0 0 15px rgba(0,164,228,0.12)',
-    borderColor: 'rgba(0,164,228,0.82)',
-    duration: 1,
-    yoyo: true,
-    repeat: -1,
-    ease: 'sine.inOut',
-  });
+  // Removed: glow effect no longer used
 }
 
 export function clearSignatureOverlay() {
@@ -142,8 +114,6 @@ export function hideBrands() {
     },
   });
   killFloatAnim();
-  killRingAnim();
-  killGlowAnim();
   clearSignatureOverlay();
 }
 
@@ -174,8 +144,6 @@ export function animateHarmony(selectedOptionId) {
   })
     .call(() => {
       killFloatAnim();
-      killRingAnim();
-      killGlowAnim();
 
       brandButtons.forEach(button => {
         const isSelected = button.dataset.option === selectedOptionId;

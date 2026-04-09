@@ -4,6 +4,7 @@
 //  physics → render
 // ═══════════════════════════════════════════════════════════
 
+import { applyPhaseState }                 from './appState.js';
 import {
   STIFFNESS, MAX_SPEED, SPAWN_RATE,
   TOTAL_CUBES, BODY_CUBES, PHASE,
@@ -13,17 +14,30 @@ import { scene, camera, renderer, clock }   from './scene.js';
 import { world, cubes }                     from './physics.js';
 import { detectPose, poseState }            from './mediapipe.js';
 import { PhaseStateMachine }                from './gestureDetector.js';
-import { setProductRenderState, syncActiveProductTransforms } from './productRenderer.js';
+import { syncActiveProductTransforms }      from './productRenderer.js';
 import { applyStackBuildSignature }         from './signatures/stackBuild.js';
 import { applyCalibrationSnapSignature }    from './signatures/calibrationSnap.js';
 import { applyFizzHaloSignature }           from './signatures/fizzHalo.js';
-import { setPhase }                         from './uiPhases.js';
 
 // ─── State ──────────────────────────────────────────────────
 let spawnCount = 0;
 const phaseStateMachine = new PhaseStateMachine();
-let lastRenderPhase = null;
-let lastRenderSelection = null;
+
+const DIST_EPSILON_SQ = 0.005 * 0.005;
+const BODY_ROTATION_DIST_SQ = 0.3 * 0.3;
+const FLOCK_DIST_SQ = 0.35 * 0.35;
+const ANGULAR_SETTLE_THRESHOLD_SQ = 0.8 * 0.8;
+const RENDER_SCALE_EPSILON = 0.0005;
+
+function getVectorLengthSq(vec) {
+  if (!vec) return 0;
+  if (typeof vec.lengthSq === 'function') return vec.lengthSq();
+
+  const x = Number.isFinite(vec.x) ? vec.x : 0;
+  const y = Number.isFinite(vec.y) ? vec.y : 0;
+  const z = Number.isFinite(vec.z) ? vec.z : 0;
+  return x * x + y * y + z * z;
+}
 
 // FPS meter
 let fpsFrames = 0, fpsLast = performance.now(), fpsCurrent = 0;
@@ -80,13 +94,7 @@ export function animate() {
   const result = phaseStateMachine.update(poseActive, currentLandmarks);
   const selectedOptionId = result.phase === PHASE.HARMONY ? result.selectedOptionId : null;
   if (result.changed) {
-    setPhase(result.phase, { selectedOptionId: result.selectedOptionId, errorMessage: result.errorMessage });
-  }
-
-  if (lastRenderPhase !== result.phase || lastRenderSelection !== selectedOptionId) {
-    setProductRenderState(result.phase, selectedOptionId);
-    lastRenderPhase = result.phase;
-    lastRenderSelection = selectedOptionId;
+    applyPhaseState(result);
   }
 
   // ── 3. Progressive cube spawn ──
@@ -94,17 +102,22 @@ export function animate() {
     spawnCount = Math.min(TOTAL_CUBES, spawnCount + SPAWN_RATE);
   }
 
-  const bodyBounds = getBodyYBounds(bodyTargets);
-  const harmonyElapsedMs = result.phase === PHASE.HARMONY ? phaseStateMachine.getTimeInPhase() : 0;
+  const needsHarmonyBounds = result.phase === PHASE.HARMONY && !!selectedOptionId;
+  const bodyBounds = needsHarmonyBounds ? getBodyYBounds(bodyTargets) : null;
+  const harmonyElapsedMs = needsHarmonyBounds ? phaseStateMachine.getTimeInPhase() : 0;
 
   // ── 4. Drive each cube toward its target ──
   for (let i = 0; i < spawnCount; i++) {
     const { body } = cubes[i];
     const item = cubeRand[i];
+    const home = shelfHome[i];
+    const bodyPosition = body.position;
+    const bodyVelocity = body.velocity;
+    const bodyAngularVelocity = body.angularVelocity;
 
-    let targetX = shelfHome[i]?.x ?? body.position.x;
-    let targetY = shelfHome[i]?.y ?? body.position.y;
-    let targetZ = shelfHome[i]?.z ?? body.position.z;
+    let targetX = home.x;
+    let targetY = home.y;
+    let targetZ = home.z;
     let renderScale = item.scale;
     const isSelectedOption = !selectedOptionId || item.optionId === selectedOptionId;
     const hasBodyTarget = poseActive && i < BODY_CUBES && bodyTargets?.[i];
@@ -139,9 +152,9 @@ export function animate() {
 
         if (!adjustment.bodyEligible) {
           isBodyBound = false;
-          targetX = shelfHome[i].x;
-          targetY = shelfHome[i].y;
-          targetZ = shelfHome[i].z;
+          targetX = home.x;
+          targetY = home.y;
+          targetZ = home.z;
         } else {
           targetX += adjustment.targetOffset.x;
           targetY += adjustment.targetOffset.y;
@@ -153,24 +166,29 @@ export function animate() {
       renderScale *= result.phase === PHASE.HARMONY ? 0.94 : 0.96;
     }
 
-    item.renderScale += (renderScale - (item.renderScale ?? item.scale)) * 0.16;
+    item.renderScale += (renderScale - item.renderScale) * 0.16;
 
-    const dx   = targetX - body.position.x;
-    const dy   = targetY - body.position.y;
-    const dz   = targetZ - body.position.z;
-    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    const dx = targetX - bodyPosition.x;
+    const dy = targetY - bodyPosition.y;
+    const dz = targetZ - bodyPosition.z;
+    const distSq = dx * dx + dy * dy + dz * dz;
 
-    if (dist > 0.005) {
+    if (!isBodyBound && body.sleepState === 2 && distSq <= DIST_EPSILON_SQ && Math.abs(item.renderScale - renderScale) < RENDER_SCALE_EPSILON) {
+      continue;
+    }
+
+    if (distSq > DIST_EPSILON_SQ) {
+      const dist = Math.sqrt(distSq);
       const stiff  = isBodyBound ? STIFFNESS : STIFFNESS * 0.7;
       const maxSpd = isBodyBound ? MAX_SPEED : MAX_SPEED * 0.6;
 
-      let speed = Math.min(dist * stiff, maxSpd);
+      const speed = Math.min(dist * stiff, maxSpd);
       let vx = dx / dist * speed;
       let vy = dy / dist * speed;
       let vz = dz / dist * speed;
 
       // Flock / swoop when flying back to shelf
-      if (!isBodyBound && dist > 0.35) {
+      if (!isBodyBound && distSq > FLOCK_DIST_SQ) {
         const phase  = i * 2.399 + time * 2.8;
         const fStr   = Math.min(dist, 2.5) * 0.55;
         vx += Math.sin(phase) * fStr;
@@ -178,43 +196,43 @@ export function animate() {
         vz += Math.sin(phase * 1.17 + i * 1.1) * fStr * 0.3;
       }
 
-      body.velocity.x = vx;
-      body.velocity.y = vy;
-      body.velocity.z = vz;
+      bodyVelocity.x = vx;
+      bodyVelocity.y = vy;
+      bodyVelocity.z = vz;
 
       if (body.sleepState === 2) body.wakeUp();
     } else {
-      body.velocity.set(0, 0, 0);
-      body.angularVelocity.set(0, 0, 0);
+      bodyVelocity.set(0, 0, 0);
+      bodyAngularVelocity.set(0, 0, 0);
       if (body.sleepState !== 2) body.sleep();
     }
 
     // Rotation behaviour
     if (isBodyBound) {
-      if (dist > 0.3) {
+      if (distSq > BODY_ROTATION_DIST_SQ) {
         const d = item;
-        if (body.angularVelocity.length() < 0.8) {
-          body.angularVelocity.x = d.rx;
-          body.angularVelocity.y = d.ry;
-          body.angularVelocity.z = d.rz;
+        if (getVectorLengthSq(bodyAngularVelocity) < ANGULAR_SETTLE_THRESHOLD_SQ) {
+          bodyAngularVelocity.x = d.rx;
+          bodyAngularVelocity.y = d.ry;
+          bodyAngularVelocity.z = d.rz;
         }
       } else {
         const d   = item;
         const idx = i * 1.37;
         const amp = 0.35;
-        body.angularVelocity.x = Math.sin(time * 1.8 + idx) * amp * d.rx * 3;
-        body.angularVelocity.y = Math.cos(time * 1.4 + idx * 0.7) * amp * d.ry * 3;
-        body.angularVelocity.z = Math.sin(time * 2.1 + idx * 1.3) * amp * d.rz * 3;
+        bodyAngularVelocity.x = Math.sin(time * 1.8 + idx) * amp * d.rx * 3;
+        bodyAngularVelocity.y = Math.cos(time * 1.4 + idx * 0.7) * amp * d.ry * 3;
+        bodyAngularVelocity.z = Math.sin(time * 2.1 + idx * 1.3) * amp * d.rz * 3;
       }
-    } else if (dist > 0.35) {
+    } else if (distSq > FLOCK_DIST_SQ) {
       const d = item;
-      body.angularVelocity.x += (d.rx * 2 - body.angularVelocity.x) * 0.05;
-      body.angularVelocity.y += (d.ry * 2 - body.angularVelocity.y) * 0.05;
-      body.angularVelocity.z += (d.rz * 2 - body.angularVelocity.z) * 0.05;
+      bodyAngularVelocity.x += (d.rx * 2 - bodyAngularVelocity.x) * 0.05;
+      bodyAngularVelocity.y += (d.ry * 2 - bodyAngularVelocity.y) * 0.05;
+      bodyAngularVelocity.z += (d.rz * 2 - bodyAngularVelocity.z) * 0.05;
     } else {
       const rest = item.restQuaternion;
       body.quaternion.set(rest.x, rest.y, rest.z, rest.w);
-      body.angularVelocity.set(0, 0, 0);
+      bodyAngularVelocity.set(0, 0, 0);
     }
   }
 

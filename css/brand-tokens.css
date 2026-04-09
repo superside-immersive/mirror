@@ -8,7 +8,7 @@
   --amc-navy:    #001A36;
   --amc-blue:    #003E7E;
   --amc-cyan:    #00A4E4;
-  --amc-red:     #003E7E;
+  --amc-red:     #E1251B;
   --amc-white:   #FFFFFF;
 
   /* ── Extended Palette ──────────────────────────────────── */
@@ -45,12 +45,12 @@
 
   /* ── Typography ────────────────────────────────────────── */
   --font-sans:        'Inter', system-ui, -apple-system, sans-serif;
-  --font-hero-size:   clamp(2.25rem, 4.4vw, 4.25rem);
+  --font-hero-size:   clamp(4rem, 8vw, 8rem);
   --font-hero-weight: 900;
   --font-hero-track:  -0.03em;
-  --font-sub-size:    clamp(0.98rem, 1.55vw, 1.32rem);
-  --font-sub-weight:  300;
-  --font-sub-track:   0.01em;
+  --font-sub-size:    clamp(3.2rem, 6.5vw, 6.5rem);
+  --font-sub-weight:  400;
+  --font-sub-track:   0.02em;
 
   /* ── Transitions ───────────────────────────────────────── */
   --ease-smooth:    cubic-bezier(0.4, 0, 0.2, 1);

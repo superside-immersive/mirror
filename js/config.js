@@ -10,7 +10,7 @@ export const AMC_COLORS = {
   blue:      0x003E7E,
   blueLight: 0x0052A3,
   cyan:      0x00A4E4,
-  red:       0x003E7E,
+  red:       0xE1251B,
   white:     0xFFFFFF,
 };
 
@@ -61,7 +61,9 @@ export const PRODUCT_TYPES = [
 ];
 
 // ─── Body Segment Definitions ───────────────────────────────
-export const SEGMENTS = [
+export const BODY_DENSITY = 0.5;
+
+const BASE_SEGMENTS = [
   { type: 'cluster', center: 0,  count: 40,  radius: 0.15, sz: 0.70 },            // head
   { type: 'line', from: 0, to: [11, 12], count: 10, thickness: 0.05, sz: 0.80 },  // neck
   { type: 'quad', corners: [11, 12, 24, 23], count: 144, thickness: 0.08, sz: 1 }, // torso
@@ -76,6 +78,11 @@ export const SEGMENTS = [
   { type: 'line', from: 26, to: 28, count: 28, thickness: 0.045, sz: 0.80 },      // R lower leg
   { type: 'line', from: 28, to: 32, count: 6,  thickness: 0.035, sz: 0.70 },      // R foot
 ];
+
+export const SEGMENTS = BASE_SEGMENTS.map(segment => ({
+  ...segment,
+  count: Math.max(1, Math.round(segment.count * BODY_DENSITY)),
+}));
 
 // Pre-compute segment ranges: which cube indices belong to which segment
 export const segRanges = [];
@@ -92,11 +99,11 @@ export const HAND_RAISE_Y_OFFSET  = -0.15;   // wrist Y must be this much above 
 export const PHASE_DEBOUNCE_MS    = 600;      // ms a state must be stable before phase transition
 export const PHASE_EXIT_DELAY_MS  = 1200;     // ms before dropping from a higher phase when gesture stops
 export const POSE_PRESENT_FRAMES  = 8;
-export const POSE_LOST_FRAMES     = 12;
+export const POSE_LOST_FRAMES     = 24;
 export const HAND_RAISE_FRAMES    = 5;
 export const GESTURE_COOLDOWN_MS  = 1200;
 export const GESTURE_TIMEOUT_MS   = 5000;
-export const CHAOS_AUTO_GESTURE_MS = 2800;
+export const CHAOS_AUTO_GESTURE_MS = 10000;
 export const HARMONY_HOLD_MS      = 4500;
 export const HARMONY_COPY_DELAY_MS = 2500;
 export const POSE_LOST_RETURN_MS  = 2600;

@@ -6,8 +6,41 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
 import { CAMERA_FOV, CAMERA_Z } from './config.js';
 
+const MAX_RENDER_WIDTH = 1080;
+const MAX_RENDER_HEIGHT = 1920;
+
 // ─── Exported state ─────────────────────────────────────────
 export let scene, camera, renderer, clock, envMap;
+
+function getRenderMetrics() {
+  const viewportWidth = Math.max(window.innerWidth || 1, 1);
+  const viewportHeight = Math.max(window.innerHeight || 1, 1);
+  const scale = Math.min(
+    MAX_RENDER_WIDTH / viewportWidth,
+    MAX_RENDER_HEIGHT / viewportHeight,
+    1,
+  );
+
+  return {
+    viewportWidth,
+    viewportHeight,
+    renderWidth: Math.max(1, Math.round(viewportWidth * scale)),
+    renderHeight: Math.max(1, Math.round(viewportHeight * scale)),
+  };
+}
+
+function applyRendererSize() {
+  const { viewportWidth, viewportHeight, renderWidth, renderHeight } = getRenderMetrics();
+  const canvas = renderer.domElement;
+
+  camera.aspect = viewportWidth / viewportHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setPixelRatio(1);
+  renderer.setSize(renderWidth, renderHeight, false);
+  canvas.style.width = `${viewportWidth}px`;
+  canvas.style.height = `${viewportHeight}px`;
+}
 
 // ─── Initialize Three.js ────────────────────────────────────
 export function initThree() {
@@ -17,8 +50,6 @@ export function initThree() {
   camera.position.set(0, 0, CAMERA_Z);
 
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setSize(innerWidth, innerHeight);
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setClearColor(0x000000, 0);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.02;
@@ -29,6 +60,7 @@ export function initThree() {
   const canvas = renderer.domElement;
   canvas.id = 'three-canvas';
   document.body.insertBefore(canvas, document.body.firstChild);
+  applyRendererSize();
 
   // ── Generate bright environment map (supermarket-like) ──
   const pmrem = new THREE.PMREMGenerator(renderer);
@@ -88,7 +120,5 @@ export function createShelfVisuals() {
 
 // ─── Handle window resize ───────────────────────────────────
 export function onResize() {
-  camera.aspect = innerWidth / innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
+  applyRendererSize();
 }

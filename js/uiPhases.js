@@ -3,6 +3,7 @@
 //  branded AMC mirror experience
 // ═══════════════════════════════════════════════════════════
 
+import { subscribeAppState } from './appState.js';
 import { CHAOS_AUTO_GESTURE_MS, HARMONY_COPY_DELAY_MS, PHASE } from './config.js';
 import {
   animateBrandsFlyIn,
@@ -24,9 +25,9 @@ const OVERLAY_IDLE = 0;
 const TEXT_BLUR = 0;
 
 const TEXT_BLACKOUT_MS = Math.max(CHAOS_AUTO_GESTURE_MS - 600, 1800);
-const OVERLAY_FADE_DUR = 0.35;
-const TEXT_IN_DUR = 0.55;
-const TEXT_OUT_DUR = 0.28;
+const OVERLAY_FADE_DUR = 0.5;
+const TEXT_IN_DUR = 0.7;
+const TEXT_OUT_DUR = 0.45;
 
 let activePhase = -1;
 let activeSelectedOptionId = null;
@@ -34,18 +35,35 @@ let activeErrorMessage = null;
 let firstChaosTriggered = false;
 let blackoutTimer = null;
 let harmonyTextTimer = null;
+let phaseDebounceTimer = null;
 let textVisible = false;
 let heroTimeline = null;
+let stopAppStateSync = null;
+
+const PHASE_DEBOUNCE_MS = 500;  // delay before committing a non-critical phase change
 
 const _overlay = () => document.getElementById('mock-3d-canvas');
 const _blurOverlay = () => document.getElementById('data-transition-overlay');
 const _headline = () => document.getElementById('main-headline');
 const _subHeadline = () => document.getElementById('sub-headline');
 const _rule = () => document.querySelector('.headline-rule');
-const _photoCTA = () => document.getElementById('photo-cta');
 
 export function getActivePhase() {
   return activePhase;
+}
+
+export function initUIPhaseSync() {
+  if (stopAppStateSync) return stopAppStateSync;
+
+  stopAppStateSync = subscribeAppState((state) => {
+    setPhase(state.phase, {
+      selectedOptionId: state.selectedOptionId,
+      activeOptionId: state.activeOptionId,
+      errorMessage: state.errorMessage,
+    });
+  }, { immediate: true });
+
+  return stopAppStateSync;
 }
 
 function killHeroTimeline() {
@@ -53,38 +71,18 @@ function killHeroTimeline() {
     heroTimeline.kill();
     heroTimeline = null;
   }
-  gsap.killTweensOf([_overlay(), _blurOverlay(), _headline(), _rule(), _subHeadline(), _photoCTA()].filter(Boolean));
+  gsap.killTweensOf([_overlay(), _blurOverlay(), _headline(), _rule(), _subHeadline()].filter(Boolean));
 }
 
 function clearAllTimers() {
   if (blackoutTimer) { clearTimeout(blackoutTimer); blackoutTimer = null; }
   if (harmonyTextTimer) { clearTimeout(harmonyTextTimer); harmonyTextTimer = null; }
-}
-
-function hidePhotoCTA() {
-  const photoCTA = _photoCTA();
-  if (!photoCTA) return;
-  gsap.to(photoCTA, {
-    autoAlpha: 0,
-    y: 12,
-    duration: 0.24,
-    ease: 'power2.inOut',
-  });
-}
-
-function showPhotoCTA() {
-  const photoCTA = _photoCTA();
-  if (!photoCTA) return;
-  gsap.fromTo(photoCTA,
-    { autoAlpha: 0, y: 12 },
-    { autoAlpha: 1, y: 0, duration: 0.4, ease: 'power2.out' }
-  );
+  if (phaseDebounceTimer) { clearTimeout(phaseDebounceTimer); phaseDebounceTimer = null; }
 }
 
 function hideText(dur = 1.0) {
   const targets = [_headline(), _subHeadline(), _rule()].filter(Boolean);
   killHeroTimeline();
-  hidePhotoCTA();
 
   heroTimeline = gsap.timeline({ onComplete: () => { heroTimeline = null; } });
   heroTimeline
@@ -140,38 +138,36 @@ function showTextWithOverlay(headlineHTML, subHTML) {
     }, 0)
     .to([headline, rule, subHeadline], {
       autoAlpha: 0,
-      y: -18,
-      scale: 0.98,
+      y: -12,
       duration: textVisible ? TEXT_OUT_DUR : 0.01,
-      stagger: 0.03,
+      stagger: 0.04,
       ease: 'power2.inOut',
     }, 0)
     .call(() => {
       headline.innerHTML = headlineHTML;
       subHeadline.innerHTML = subHTML;
-      gsap.set(headline, { y: 18, scale: 0.98 });
-      gsap.set(rule, { y: 12, autoAlpha: 0 });
-      gsap.set(subHeadline, { y: 18, scale: 1 });
+      gsap.set(headline, { y: 14 });
+      gsap.set(rule, { y: 8, autoAlpha: 0 });
+      gsap.set(subHeadline, { y: 14 });
     })
     .to(headline, {
       autoAlpha: 1,
       y: 0,
-      scale: 1,
       duration: TEXT_IN_DUR,
-      ease: 'power3.out',
-    }, textVisible ? 0.18 : 0.08)
+      ease: 'power2.out',
+    }, textVisible ? 0.3 : 0.1)
     .to(rule, {
       autoAlpha: 0.45,
       y: 0,
-      duration: 0.4,
+      duration: 0.5,
       ease: 'power2.out',
-    }, textVisible ? 0.22 : 0.12)
+    }, textVisible ? 0.35 : 0.15)
     .to(subHeadline, {
       autoAlpha: 1,
       y: 0,
       duration: TEXT_IN_DUR,
-      ease: 'expo.out',
-    }, textVisible ? 0.24 : 0.14);
+      ease: 'power2.out',
+    }, textVisible ? 0.38 : 0.18);
 
   textVisible = true;
 }
@@ -186,7 +182,6 @@ function setBackground(className) {
 
 function triggerBoot() {
   hideBrands();
-  hidePhotoCTA();
   clearSignatureOverlay();
   setBackground('bg-boot');
   showTextWithOverlay(
@@ -199,7 +194,6 @@ function triggerIdle() {
   clearAllTimers();
   firstChaosTriggered = false;
   hideBrands();
-  hidePhotoCTA();
   clearSignatureOverlay();
 
   playSceneTransition(() => {
@@ -212,38 +206,45 @@ function triggerIdle() {
   });
 }
 
-function triggerChaos() {
+function triggerChaos(previousPhase) {
   hideBrands();
-  hidePhotoCTA();
   clearSignatureOverlay();
+
+  if (previousPhase === PHASE.GESTURE) {
+    setBackground('bg-chaos');
+    showTextWithOverlay(
+      'WITHOUT <span class="text-accent">DATA</span>',
+      'BRANDS STRUGGLE.'
+    );
+    return;
+  }
 
   playSceneTransition(() => {
     setBackground('bg-chaos');
   }, () => {
-    if (!firstChaosTriggered) {
-      firstChaosTriggered = true;
-      hideText(1.2);
-      blackoutTimer = setTimeout(() => {
-        if (activePhase === PHASE.CHAOS) {
-          showTextWithOverlay(
-            'THE AISLE IS <span class="text-accent">NOISY.</span>',
-            'Without data, brands struggle to attract the right attention.'
-          );
-        }
-        blackoutTimer = null;
-      }, TEXT_BLACKOUT_MS);
-    } else {
-      showTextWithOverlay(
-        'THE AISLE IS <span class="text-accent">NOISY.</span>',
-        'Without data, brands struggle to attract the right attention.'
-      );
-    }
+    showTextWithOverlay(
+      'WITHOUT <span class="text-accent">DATA</span>',
+      'BRANDS STRUGGLE.'
+    );
   });
 }
 
-function triggerGesture() {
+function triggerGesture(previousPhase) {
   if (blackoutTimer) { clearTimeout(blackoutTimer); blackoutTimer = null; }
-  hidePhotoCTA();
+
+  // If coming from CHAOS, just show brands and update text — no flash transition
+  if (previousPhase === PHASE.CHAOS || previousPhase === PHASE.POSE_LOST) {
+    setBackground('bg-chaos');
+    animateBrandsFlyIn();
+    startFloatingAnimation();
+    startRingPulse();
+    startTechGlow();
+    showTextWithOverlay(
+      'HARNESS THE <span class="text-accent">DATA.</span>',
+      'Raise your hand. Select a brand and redirect its attraction to your ideal buyer.'
+    );
+    return;
+  }
 
   playSceneTransition(() => {
     setBackground('bg-chaos');
@@ -270,30 +271,19 @@ function triggerHarmony(selectedOptionId) {
         'FROM CHAOS TO <span class="text-accent">PRECISION.</span>',
         'AMC connects your brand to the right purchase intent—and proves it with closed-loop measurement.'
       );
-      showPhotoCTA();
+
     }
     harmonyTextTimer = null;
   }, HARMONY_COPY_DELAY_MS);
 }
 
 function triggerPoseLost() {
-  hideBrands();
-  hidePhotoCTA();
-  clearSignatureOverlay();
-
-  playSceneTransition(() => {
-    setBackground('bg-pose-lost');
-  }, () => {
-    showTextWithOverlay(
-      'RETURNING TO <span class="text-accent">SHELF.</span>',
-      'Step back in when you are ready to form your next match.'
-    );
-  });
+  // POSE_LOST removed — state machine goes straight to IDLE
+  triggerIdle();
 }
 
 function triggerError(errorMessage) {
   hideBrands();
-  hidePhotoCTA();
   clearSignatureOverlay();
   setBackground('bg-error');
   showTextWithOverlay(
@@ -303,28 +293,46 @@ function triggerError(errorMessage) {
 }
 
 export function setPhase(phase, opts = {}) {
-  const { selectedOptionId = null, errorMessage = null } = opts;
-  if (phase === activePhase && selectedOptionId === activeSelectedOptionId && errorMessage === activeErrorMessage) return;
+  const { selectedOptionId = null, activeOptionId = null, errorMessage = null } = opts;
+  const displayOptionId = selectedOptionId || activeOptionId || null;
+
+  if (phase === activePhase && displayOptionId === activeSelectedOptionId && errorMessage === activeErrorMessage) return;
+
+  // Immediate phases: HARMONY (user action), ERROR, BOOT — no debounce
+  const isImmediate = phase === PHASE.HARMONY || phase === PHASE.ERROR || phase === PHASE.BOOT;
+
+  // Skip POSE_LOST entirely if we're in CHAOS/GESTURE and it would just flicker
+  // Also debounce CHAOS↔GESTURE and POSE_LOST transitions
+  if (!isImmediate) {
+    // If already debouncing and new phase arrives, cancel the pending one
+    if (phaseDebounceTimer) { clearTimeout(phaseDebounceTimer); phaseDebounceTimer = null; }
+
+    // For POSE_LOST, use a longer debounce to avoid flicker
+    const delay = phase === PHASE.POSE_LOST ? 800 : PHASE_DEBOUNCE_MS;
+
+    phaseDebounceTimer = setTimeout(() => {
+      phaseDebounceTimer = null;
+      commitPhase(phase, displayOptionId, errorMessage);
+    }, delay);
+    return;
+  }
+
+  // Cancel any pending debounce for immediate phases
+  if (phaseDebounceTimer) { clearTimeout(phaseDebounceTimer); phaseDebounceTimer = null; }
+  commitPhase(phase, displayOptionId, errorMessage);
+}
+
+function commitPhase(phase, displayOptionId, errorMessage) {
+  if (phase === activePhase && displayOptionId === activeSelectedOptionId && errorMessage === activeErrorMessage) return;
 
   clearAllTimers();
   killHeroTimeline();
+  const previousPhase = activePhase;
   activePhase = phase;
-  activeSelectedOptionId = selectedOptionId;
+  activeSelectedOptionId = displayOptionId;
   activeErrorMessage = errorMessage;
 
-  updateSelectedOptionDebug(selectedOptionId);
-
-  const indicator = document.getElementById('phase-indicator');
-  const names = {
-    [PHASE.BOOT]: 'Boot',
-    [PHASE.IDLE]: 'Idle',
-    [PHASE.CHAOS]: 'Chaos',
-    [PHASE.GESTURE]: 'Gesture',
-    [PHASE.HARMONY]: 'Harmony',
-    [PHASE.POSE_LOST]: 'Pose Lost',
-    [PHASE.ERROR]: 'Error',
-  };
-  if (indicator) indicator.textContent = `Phase ${phase}: ${names[phase] || ''}`;
+  updateSelectedOptionDebug(displayOptionId);
 
   document.querySelectorAll('.dev-btn[data-phase]').forEach(btn => {
     btn.classList.toggle('active', parseInt(btn.dataset.phase, 10) === phase);
@@ -338,13 +346,13 @@ export function setPhase(phase, opts = {}) {
       triggerIdle();
       break;
     case PHASE.CHAOS:
-      triggerChaos();
+      triggerChaos(previousPhase);
       break;
     case PHASE.GESTURE:
-      triggerGesture();
+      triggerGesture(previousPhase);
       break;
     case PHASE.HARMONY:
-      triggerHarmony(selectedOptionId || 'coca-cola');
+      triggerHarmony(displayOptionId || 'coca-cola');
       break;
     case PHASE.POSE_LOST:
       triggerPoseLost();

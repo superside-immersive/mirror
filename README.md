@@ -38,6 +38,7 @@ Gestures and movement trigger phase transitions and reassembly, encouraging quic
 ```
 index.html          App shell + UI overlay (loading, selector, copy, debug controls)
 js/main.js          Entry point and startup orchestration
+js/appState.js      Central app state for phase, selection, and runtime errors
 js/config.js        Single source of truth for tuning constants
 js/scene.js         Three.js setup, environment map, shelf visuals, resize handling
 js/physics.js       cannon-es world and proxy bodies

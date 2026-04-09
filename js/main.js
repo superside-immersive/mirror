@@ -3,16 +3,17 @@
 //  and connects all modules together
 // ═══════════════════════════════════════════════════════════
 
+import { applyPhaseState } from './appState.js';
 import { PHASE } from './config.js';
 import { generateCubeData, generateShelfPositions, generateStaticShelfItems, cubeRand, staticShelfItems } from './cubeData.js';
 import { initThree, onResize }  from './scene.js';
 import { initPhysics, createCubes }           from './physics.js';
 import { initWebcam, initPose, stopWebcam }   from './mediapipe.js';
 import { initUIAnimations, animateBrandHeader } from './uiAnimations.js';
-import { setPhase, forcePhase }               from './uiPhases.js';
+import { initUIPhaseSync }                    from './uiPhases.js';
 import { animate, phaseStateMachine }         from './animationLoop.js';
 import { loadProductCatalog }                 from './productCatalog.js';
-import { createProductRenderers }             from './productRenderer.js';
+import { createProductRenderers, initProductRenderStateSync } from './productRenderer.js';
 import {
   DEFAULT_PRODUCT_OPTION_ID,
   PRODUCT_OPTIONS,
@@ -52,11 +53,13 @@ function setupDebugControls() {
     btn.addEventListener('click', () => {
       const phase = parseInt(btn.dataset.phase);
       const selectedOptionId = DEFAULT_PRODUCT_OPTION_ID;
-      phaseStateMachine.forcePhase(phase, phase === PHASE.HARMONY ? selectedOptionId : null, phase === PHASE.ERROR ? 'Debug error state.' : null);
-      forcePhase(phase, {
-        selectedOptionId: phase === PHASE.HARMONY ? selectedOptionId : null,
-        errorMessage: phase === PHASE.ERROR ? 'Debug error state.' : null,
-      });
+      const result = phaseStateMachine.forcePhase(
+        phase,
+        phase === PHASE.HARMONY ? selectedOptionId : null,
+        phase === PHASE.ERROR ? 'Debug error state.' : null,
+      );
+
+      applyPhaseState(result);
     });
   });
 }
@@ -66,9 +69,10 @@ function setupBrandClicks() {
   document.querySelectorAll('.brand-logo').forEach(logo => {
     logo.addEventListener('click', (e) => {
       const optionId = e.currentTarget.dataset.option;
-      selectProductOption(optionId);
-      phaseStateMachine.selectOption(optionId);
-      forcePhase(PHASE.HARMONY, { selectedOptionId: optionId });
+      const option = selectProductOption(optionId);
+      const result = phaseStateMachine.selectOption(option.id);
+
+      applyPhaseState(result);
     });
   });
 }
@@ -86,10 +90,10 @@ async function main() {
     setLoadingText('Initializing...');
     initThree();
     initUIAnimations();
+    initUIPhaseSync();
     setupDebugControls();
     setupBrandClicks();
     setupWindowEvents();
-    forcePhase(PHASE.BOOT);
 
     // 2. Load product assets and generate product populations
     setLoadingText('Loading product library...');
@@ -103,23 +107,37 @@ async function main() {
     initPhysics();
     createCubes();
     createProductRenderers(catalog, cubeRand, staticShelfItems);
+    initProductRenderStateSync();
 
-    // 4. Initialize MediaPipe before releasing BOOT so the machine enters IDLE only when ready
-    setLoadingText('Starting camera...');
-    await initWebcam();
-
-    setLoadingText('Loading pose model...');
-    await initPose();
+    // 4. Initialize MediaPipe — graceful fallback if camera is denied
+    let cameraReady = false;
+    try {
+      setLoadingText('Starting camera...');
+      await initWebcam();
+      setLoadingText('Loading pose model...');
+      await initPose();
+      cameraReady = true;
+    } catch (cameraErr) {
+      console.warn('Camera unavailable, running without pose detection:', cameraErr.message);
+    }
 
     hideLoading();
     animateBrandHeader();
-    phaseStateMachine.markReady();
-    setPhase(PHASE.IDLE, { selectedOptionId: DEFAULT_PRODUCT_OPTION_ID });
+
+    if (cameraReady) {
+      const readyState = phaseStateMachine.markReady();
+      applyPhaseState(readyState);
+    } else {
+      // Drop straight into IDLE so scene is visible without camera
+      phaseStateMachine.markReady();
+      applyPhaseState({ phase: PHASE.IDLE, selectedOptionId: DEFAULT_PRODUCT_OPTION_ID });
+    }
+
     animate();
   } catch (err) {
     console.error('App init error:', err);
-    phaseStateMachine.setError(err.message);
-    forcePhase(PHASE.ERROR, { errorMessage: err.message, selectedOptionId: DEFAULT_PRODUCT_OPTION_ID });
+    const errorState = phaseStateMachine.setError(err.message);
+    applyPhaseState(errorState);
     setLoadingText(`Init error: ${err.message}`);
     hideLoading();
   }

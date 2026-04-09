@@ -5,6 +5,7 @@
 
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
 import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/loaders/GLTFLoader.js';
+import { mergeGeometries } from 'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/utils/BufferGeometryUtils.js';
 
 const loader = new GLTFLoader();
 const catalogCache = new Map();
@@ -57,6 +58,50 @@ function transformBounds(box, matrix) {
   return new THREE.Box3().setFromPoints(transformed);
 }
 
+function bakePieceGeometry(geometry, matrix) {
+  const bakedGeometry = geometry.clone();
+  bakedGeometry.applyMatrix4(matrix);
+  bakedGeometry.computeBoundingBox();
+  bakedGeometry.computeBoundingSphere();
+  return bakedGeometry;
+}
+
+function appendMergedSingleMaterialPieces(groups, pieces) {
+  for (const group of groups.values()) {
+    if (group.geometries.length === 1) {
+      pieces.push({
+        geometry: group.geometries[0],
+        materialIndices: group.materialIndices,
+        materialKey: group.materialKey,
+        localMatrix: null,
+      });
+      continue;
+    }
+
+    const mergedGeometry = mergeGeometries(group.geometries, false);
+    if (mergedGeometry) {
+      mergedGeometry.computeBoundingBox();
+      mergedGeometry.computeBoundingSphere();
+      pieces.push({
+        geometry: mergedGeometry,
+        materialIndices: group.materialIndices,
+        materialKey: group.materialKey,
+        localMatrix: null,
+      });
+      continue;
+    }
+
+    for (const geometry of group.geometries) {
+      pieces.push({
+        geometry,
+        materialIndices: group.materialIndices,
+        materialKey: group.materialKey,
+        localMatrix: null,
+      });
+    }
+  }
+}
+
 export async function loadProductCatalog(assetPath) {
   const cacheKey = Array.isArray(assetPath)
     ? `options:${assetPath.map(option => `${option.id}:${option.heroProductAssetPath}`).join('|')}`
@@ -95,6 +140,7 @@ export async function loadProductCatalog(assetPath) {
       .multiply(new THREE.Matrix4().makeTranslation(-correctedCenter.x, -correctedCenter.y, -correctedCenter.z));
 
     const pieces = [];
+    const singleMaterialGroups = new Map();
     variantRoot.traverse(child => {
       if (!child.isMesh || !child.geometry) return;
 
@@ -102,14 +148,31 @@ export async function loadProductCatalog(assetPath) {
       const materialIndices = sourceMaterials.map(registerMaterial);
       const relativeMatrix = createRelativeMatrix(child);
       const pieceMatrix = normalizeMatrix.clone().multiply(uprightCorrection).multiply(relativeMatrix);
+      const materialKey = materialIndices.join(',');
+      const bakedGeometry = bakePieceGeometry(child.geometry, pieceMatrix);
+
+      if (materialIndices.length === 1) {
+        if (!singleMaterialGroups.has(materialKey)) {
+          singleMaterialGroups.set(materialKey, {
+            materialIndices,
+            materialKey,
+            geometries: [],
+          });
+        }
+
+        singleMaterialGroups.get(materialKey).geometries.push(bakedGeometry);
+        return;
+      }
 
       pieces.push({
-        geometry: child.geometry,
+        geometry: bakedGeometry,
         materialIndices,
-        materialKey: materialIndices.join(','),
-        localMatrix: pieceMatrix,
+        materialKey,
+        localMatrix: null,
       });
     });
+
+    appendMergedSingleMaterialPieces(singleMaterialGroups, pieces);
 
     const normalizedSize = correctedSize.clone().multiplyScalar(normalizeScale);
 

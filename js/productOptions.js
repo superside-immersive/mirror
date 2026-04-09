@@ -3,6 +3,8 @@
 //  shared selection state for the AMC mirror experience
 // ═══════════════════════════════════════════════════════════
 
+import { getAppState, updateAppState } from './appState.js';
+
 export const PRODUCT_OPTIONS = [
   {
     id: 'kraft-heinz',
@@ -56,9 +58,15 @@ export const DEFAULT_PRODUCT_OPTION_ID = PRODUCT_OPTIONS[2].id;
 const optionMap = new Map(PRODUCT_OPTIONS.map(option => [option.id, option]));
 
 export const productSelectionState = {
-  activeOptionId: DEFAULT_PRODUCT_OPTION_ID,
-  selectedOptionId: null,
-  currentPhase: null,
+  get activeOptionId() {
+    return getAppState().activeOptionId || DEFAULT_PRODUCT_OPTION_ID;
+  },
+  get selectedOptionId() {
+    return getAppState().selectedOptionId;
+  },
+  get currentPhase() {
+    return getAppState().phase;
+  },
 };
 
 export function getDefaultProductOption() {
@@ -74,16 +82,20 @@ export function getProductOptionForIndex(index) {
 }
 
 export function setActiveProductOption(optionId) {
-  productSelectionState.activeOptionId = getProductOptionById(optionId).id;
+  const option = getProductOptionById(optionId);
+  updateAppState({ activeOptionId: option.id });
+  return option;
 }
 
 export function selectProductOption(optionId) {
   const option = getProductOptionById(optionId);
-  productSelectionState.selectedOptionId = option.id;
-  productSelectionState.activeOptionId = option.id;
+  updateAppState({
+    selectedOptionId: option.id,
+    activeOptionId: option.id,
+  });
   return option;
 }
 
 export function clearSelectedProductOption() {
-  productSelectionState.selectedOptionId = null;
+  updateAppState({ selectedOptionId: null });
 }

@@ -4,6 +4,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
+import { getAppState, subscribeAppState } from './appState.js';
 import { PHASE } from './config.js';
 import { envMap, scene } from './scene.js';
 
@@ -20,6 +21,8 @@ const tmpPieceMatrix = new THREE.Matrix4();
 const zeroScale = new THREE.Vector3(0.000001, 0.000001, 0.000001);
 let activePhase = null;
 let activeSelection = null;
+let stopAppStateSync = null;
+let lastVisibleActiveCount = 0;
 
 function isGlassLikeMaterial(material) {
   const name = (material.name || '').toLowerCase();
@@ -142,8 +145,12 @@ function writeHandles(handles, position, quaternion, scale, visible = true) {
   tmpItemMatrix.compose(tmpPos, tmpQuat, visible ? tmpScale : zeroScale);
 
   for (const handle of handles) {
-    tmpPieceMatrix.multiplyMatrices(tmpItemMatrix, handle.localMatrix);
-    handle.mesh.setMatrixAt(handle.slot, tmpPieceMatrix);
+    if (handle.localMatrix) {
+      tmpPieceMatrix.multiplyMatrices(tmpItemMatrix, handle.localMatrix);
+      handle.mesh.setMatrixAt(handle.slot, tmpPieceMatrix);
+    } else {
+      handle.mesh.setMatrixAt(handle.slot, tmpItemMatrix);
+    }
   }
 }
 
@@ -170,6 +177,7 @@ export function createProductRenderers(catalog, activeItems, staticItems) {
   staticBatches.clear();
   activeHandles.length = 0;
   staticHandles.length = 0;
+  lastVisibleActiveCount = 0;
 
   const dynamicSpecs = createBatchMap(activeItems, catalog, 'dynamic');
   const staticSpecs = createBatchMap(staticItems, catalog, 'static');
@@ -181,7 +189,7 @@ export function createProductRenderers(catalog, activeItems, staticItems) {
   registerHandles(staticItems, catalog, staticBatches, staticHandles);
 
   activeItems.forEach((item, index) => {
-    writeHandles(activeHandles[index], item.position, item.restQuaternion, item.renderScale ?? item.scale, true);
+    writeHandles(activeHandles[index], item.position, item.restQuaternion, item.renderScale ?? item.scale, false);
   });
 
   staticItems.forEach((item, index) => {
@@ -190,6 +198,22 @@ export function createProductRenderers(catalog, activeItems, staticItems) {
 
   finalizeBatchMatrices(dynamicBatches, true);
   finalizeBatchMatrices(staticBatches, true);
+
+  const state = getAppState();
+  setProductRenderState(state.phase, state.phase === PHASE.HARMONY ? state.selectedOptionId : null);
+}
+
+export function initProductRenderStateSync() {
+  if (stopAppStateSync) return stopAppStateSync;
+
+  stopAppStateSync = subscribeAppState((state) => {
+    setProductRenderState(
+      state.phase,
+      state.phase === PHASE.HARMONY ? state.selectedOptionId : null,
+    );
+  }, { immediate: true });
+
+  return stopAppStateSync;
 }
 
 export function setProductRenderState(phase, selectedOptionId = null) {
@@ -200,7 +224,9 @@ export function setProductRenderState(phase, selectedOptionId = null) {
 }
 
 export function syncActiveProductTransforms(activeItems, bodies, visibleCount) {
-  for (let i = 0; i < activeItems.length; i++) {
+  const activeCount = Math.min(visibleCount, activeItems.length, bodies.length, activeHandles.length);
+
+  for (let i = 0; i < activeCount; i++) {
     const handles = activeHandles[i];
     if (!handles) continue;
 
@@ -209,9 +235,22 @@ export function syncActiveProductTransforms(activeItems, bodies, visibleCount) {
 
     tmpPos.set(body.position.x, body.position.y, body.position.z);
     tmpQuat.set(body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w);
-    const isVisible = i < visibleCount;
-    writeHandles(handles, tmpPos, tmpQuat, activeItems[i].renderScale ?? activeItems[i].scale, isVisible);
+    writeHandles(handles, tmpPos, tmpQuat, activeItems[i].renderScale ?? activeItems[i].scale, true);
   }
+
+  for (let i = activeCount; i < lastVisibleActiveCount; i++) {
+    const handles = activeHandles[i];
+    if (!handles) continue;
+
+    const body = bodies[i]?.body;
+    if (!body) continue;
+
+    tmpPos.set(body.position.x, body.position.y, body.position.z);
+    tmpQuat.set(body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w);
+    writeHandles(handles, tmpPos, tmpQuat, activeItems[i].renderScale ?? activeItems[i].scale, false);
+  }
+
+  lastVisibleActiveCount = activeCount;
 
   finalizeBatchMatrices(dynamicBatches, false);
 }
