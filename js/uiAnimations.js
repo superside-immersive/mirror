@@ -15,8 +15,10 @@ let selectorPanel;
 let brandButtons;
 
 let floatAnim = null;
+let selectorTimeline = null;
 
 function killFloatAnim() { if (floatAnim) { floatAnim.kill(); floatAnim = null; } }
+function killSelectorTimeline() { if (selectorTimeline) { selectorTimeline.kill(); selectorTimeline = null; } }
 
 function clearButtonState() {
   brandButtons.forEach(button => {
@@ -45,32 +47,43 @@ export function playSceneTransition(callback, onComplete) {
 
   tl.to(dataOverlay, {
     autoAlpha: 1,
-    duration: 0.16,
-    ease: 'power2.inOut',
+    duration: 0.32,
+    ease: 'sine.inOut',
   })
     .call(callback)
     .to(dataOverlay, {
       autoAlpha: 0,
-      duration: 0.24,
-      ease: 'power2.inOut',
-    }, '+=0.04');
+      duration: 0.42,
+      ease: 'sine.out',
+    }, '+=0.08');
 
   if (onComplete) tl.call(onComplete);
 }
 
 export function animateBrandsFlyIn() {
   if (!selectorPanel) return;
+  killSelectorTimeline();
   selectorPanel.style.visibility = 'visible';
   gsap.set(selectorPanel, { display: 'flex' });
-  gsap.to(selectorPanel, { autoAlpha: 1, y: 0, duration: 0.22, ease: 'power2.out' });
-  gsap.to(brandButtons, {
-    autoAlpha: 1,
-    y: 0,
-    scale: 1,
-    duration: 0.38,
-    ease: 'power3.out',
-    stagger: 0.05,
-  });
+  gsap.set(brandButtons, { autoAlpha: 0, y: 28, scale: 0.975 });
+
+  selectorTimeline = gsap.timeline({ onComplete: () => { selectorTimeline = null; } });
+  selectorTimeline
+    .to(selectorPanel, {
+      autoAlpha: 1,
+      y: 0,
+      duration: 0.52,
+      ease: 'power3.out',
+    }, 0)
+    .to(brandButtons, {
+      autoAlpha: 1,
+      y: 0,
+      scale: 1,
+      duration: 0.72,
+      ease: 'power3.out',
+      stagger: 0.08,
+    }, 0.06);
+
   clearButtonState();
   clearSignatureOverlay();
 }
@@ -78,8 +91,8 @@ export function animateBrandsFlyIn() {
 export function startFloatingAnimation() {
   killFloatAnim();
   floatAnim = gsap.to('.brand-logo-container', {
-    y: -10,
-    duration: 2.4,
+    y: -6,
+    duration: 3.2,
     stagger: { each: 0.18, repeat: -1, yoyo: true },
     ease: 'sine.inOut',
   });
@@ -99,18 +112,31 @@ export function clearSignatureOverlay() {
 
 export function hideBrands() {
   if (!selectorPanel) return;
-  gsap.to(selectorPanel, {
-    autoAlpha: 0,
-    y: 18,
-    duration: 0.28,
-    ease: 'power2.inOut',
+  killSelectorTimeline();
+  selectorTimeline = gsap.timeline({
     onComplete: () => {
       selectorPanel.style.visibility = 'hidden';
       selectorPanel.style.display = 'none';
-      gsap.set(brandButtons, { autoAlpha: 0, y: 18, scale: 0.96 });
+      gsap.set(brandButtons, { autoAlpha: 0, y: 24, scale: 0.975 });
       clearButtonState();
+      selectorTimeline = null;
     },
   });
+  selectorTimeline
+    .to(brandButtons, {
+      autoAlpha: 0,
+      y: 18,
+      scale: 0.985,
+      duration: 0.42,
+      ease: 'power2.inOut',
+      stagger: { each: 0.04, from: 'end' },
+    }, 0)
+    .to(selectorPanel, {
+      autoAlpha: 0,
+      y: 12,
+      duration: 0.48,
+      ease: 'sine.inOut',
+    }, 0.08);
   killFloatAnim();
   clearSignatureOverlay();
 }
@@ -137,7 +163,8 @@ export function animateHarmony(selectedOptionId) {
   tl.to(dataOverlay, {
     autoAlpha: 1,
     backgroundColor: option.colorTheme.glow,
-    duration: 0.15,
+    duration: 0.28,
+    ease: 'sine.inOut',
   })
     .call(() => {
       killFloatAnim();
@@ -149,24 +176,24 @@ export function animateHarmony(selectedOptionId) {
 
         gsap.to(button, {
           autoAlpha: isSelected ? 1 : 0.18,
-          scale: isSelected ? 1.08 : 0.94,
-          y: isSelected ? -6 : 0,
+          scale: isSelected ? 1.05 : 0.96,
+          y: isSelected ? -4 : 0,
           boxShadow: isSelected
             ? `0 0 54px ${option.colorTheme.glow}, inset 0 0 18px ${option.colorTheme.glow}`
             : '0 0 0 rgba(0,0,0,0)',
           borderColor: isSelected ? option.colorTheme.border : 'rgba(255,255,255,0.08)',
           background: isSelected ? option.colorTheme.background : 'linear-gradient(160deg, rgba(0, 62, 126, 0.18), rgba(0, 13, 26, 0.68))',
-          duration: 0.6,
-          ease: 'power2.out',
+          duration: 0.82,
+          ease: 'power3.out',
         });
       });
     })
     .to(dataOverlay, {
       autoAlpha: 0,
       backgroundColor: 'rgba(0, 164, 228, 0.08)',
-      duration: 0.8,
-      ease: 'power2.out',
-    }, '+=0.05');
+      duration: 0.95,
+      ease: 'sine.out',
+    }, '+=0.08');
 }
 
 export function animateBrandHeader() {

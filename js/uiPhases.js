@@ -25,9 +25,10 @@ const OVERLAY_IDLE = 0;
 const TEXT_BLUR = 0;
 
 const TEXT_BLACKOUT_MS = Math.max(CHAOS_AUTO_GESTURE_MS - 600, 1800);
-const OVERLAY_FADE_DUR = 0.5;
-const TEXT_IN_DUR = 0.7;
-const TEXT_OUT_DUR = 0.45;
+const OVERLAY_FADE_DUR = 0.72;
+const TEXT_IN_DUR = 1.02;
+const TEXT_OUT_DUR = 0.72;
+const HARMONY_CTA_DELAY_MS = 3200;
 
 let activePhase = -1;
 let activeSelectedOptionId = null;
@@ -50,6 +51,27 @@ const _rule = () => document.querySelector('.headline-rule');
 
 export function getActivePhase() {
   return activePhase;
+}
+
+function getPhaseName(phase) {
+  switch (phase) {
+    case PHASE.BOOT:
+      return 'boot';
+    case PHASE.IDLE:
+      return 'idle';
+    case PHASE.CHAOS:
+      return 'chaos';
+    case PHASE.GESTURE:
+      return 'gesture';
+    case PHASE.HARMONY:
+      return 'harmony';
+    case PHASE.POSE_LOST:
+      return 'pose-lost';
+    case PHASE.ERROR:
+      return 'error';
+    default:
+      return 'unknown';
+  }
 }
 
 export function initUIPhaseSync() {
@@ -88,22 +110,22 @@ function hideText(dur = 1.0) {
   heroTimeline
     .to(targets, {
       autoAlpha: 0,
-      y: -24,
-      scale: 0.97,
+      y: -16,
+      scale: 0.985,
       duration: Math.min(dur, TEXT_OUT_DUR),
-      stagger: 0.05,
-      ease: 'power2.inOut',
+      stagger: 0.08,
+      ease: 'power3.inOut',
     }, 0)
     .to(_overlay(), {
       opacity: OVERLAY_CLEAR,
       duration: dur,
-      ease: 'power2.inOut',
+      ease: 'sine.inOut',
     }, 0)
     .to(_blurOverlay(), {
       autoAlpha: 0,
       backgroundColor: 'rgba(0, 164, 228, 0.045)',
       duration: dur,
-      ease: 'power2.inOut',
+      ease: 'sine.inOut',
     }, 0);
 
   textVisible = false;
@@ -124,48 +146,57 @@ function showTextWithOverlay(headlineHTML, subHTML) {
     .to(overlay, {
       opacity: activePhase === PHASE.IDLE ? OVERLAY_IDLE : OVERLAY_DIM,
       duration: OVERLAY_FADE_DUR,
-      ease: 'power2.out',
+      ease: 'sine.out',
     }, 0)
     .to(blurOverlay, {
       autoAlpha: 1,
       backgroundColor: 'rgba(0, 18, 38, 0.08)',
       duration: OVERLAY_FADE_DUR,
-      ease: 'power2.out',
+      ease: 'sine.out',
     }, 0)
     .to([headline, rule, subHeadline], {
       autoAlpha: 0,
-      y: -12,
-      duration: textVisible ? TEXT_OUT_DUR : 0.01,
-      stagger: 0.04,
-      ease: 'power2.inOut',
+      y: -10,
+      duration: textVisible ? TEXT_OUT_DUR : 0.12,
+      stagger: 0.06,
+      ease: 'power3.inOut',
     }, 0)
     .call(() => {
       headline.innerHTML = headlineHTML;
       subHeadline.innerHTML = subHTML;
-      gsap.set(headline, { y: 14 });
-      gsap.set(rule, { y: 8, autoAlpha: 0 });
-      gsap.set(subHeadline, { y: 14 });
+      gsap.set(headline, { y: 18, autoAlpha: 0, scale: 0.988 });
+      gsap.set(rule, { y: 12, autoAlpha: 0, scaleX: 0.82, transformOrigin: '50% 50%' });
+      gsap.set(subHeadline, { y: 18, autoAlpha: 0 });
     })
     .to(headline, {
       autoAlpha: 1,
       y: 0,
+      scale: 1,
       duration: TEXT_IN_DUR,
-      ease: 'power2.out',
-    }, textVisible ? 0.3 : 0.1)
+      ease: 'power3.out',
+    }, textVisible ? 0.24 : 0.12)
     .to(rule, {
       autoAlpha: 0.45,
       y: 0,
-      duration: 0.5,
-      ease: 'power2.out',
-    }, textVisible ? 0.35 : 0.15)
+      scaleX: 1,
+      duration: 0.72,
+      ease: 'power3.out',
+    }, textVisible ? 0.32 : 0.18)
     .to(subHeadline, {
       autoAlpha: 1,
       y: 0,
       duration: TEXT_IN_DUR,
-      ease: 'power2.out',
-    }, textVisible ? 0.38 : 0.18);
+      ease: 'power3.out',
+    }, textVisible ? 0.4 : 0.22);
 
   textVisible = true;
+}
+
+function showGestureCta() {
+  showTextWithOverlay(
+    'HARNESS THE <span class="text-accent">DATA.</span>',
+    'Raise your hand.<br>Select a brand.'
+  );
 }
 
 function setBackground(className) {
@@ -235,10 +266,7 @@ function triggerGesture(previousPhase) {
     startFloatingAnimation();
     startRingPulse();
     startTechGlow();
-    showTextWithOverlay(
-      'HARNESS THE <span class="text-accent">DATA.</span>',
-      'Raise your hand.<br>Select a brand.'
-    );
+    showGestureCta();
     return;
   }
 
@@ -249,28 +277,22 @@ function triggerGesture(previousPhase) {
     startRingPulse();
     startTechGlow();
   }, () => {
-    showTextWithOverlay(
-      'HARNESS THE <span class="text-accent">DATA.</span>',
-      'Raise your hand.<br>Select a brand.'
-    );
+    showGestureCta();
   });
 }
 
 function triggerHarmony(selectedOptionId) {
   setBackground('bg-harmony');
   animateHarmony(selectedOptionId);
-  hideText(0.8);
+  hideText(0.95);
 
   harmonyTextTimer = setTimeout(() => {
     if (activePhase === PHASE.HARMONY) {
-      showTextWithOverlay(
-        'FROM CHAOS TO <span class="text-accent">PRECISION.</span>',
-        'AMC connects your brand to the right purchase intent—and proves it with closed-loop measurement.'
-      );
+      showGestureCta();
 
     }
     harmonyTextTimer = null;
-  }, HARMONY_COPY_DELAY_MS);
+  }, Math.max(HARMONY_COPY_DELAY_MS, HARMONY_CTA_DELAY_MS));
 }
 
 function triggerPoseLost() {
@@ -327,6 +349,7 @@ function commitPhase(phase, displayOptionId, errorMessage) {
   activePhase = phase;
   activeSelectedOptionId = displayOptionId;
   activeErrorMessage = errorMessage;
+  document.body.dataset.uiPhase = getPhaseName(phase);
 
   updateSelectedOptionDebug(displayOptionId);
 
