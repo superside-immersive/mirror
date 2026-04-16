@@ -28,7 +28,8 @@ const TEXT_BLACKOUT_MS = Math.max(CHAOS_AUTO_GESTURE_MS - 600, 1800);
 const OVERLAY_FADE_DUR = 0.72;
 const TEXT_IN_DUR = 1.02;
 const TEXT_OUT_DUR = 0.72;
-const HARMONY_CTA_DELAY_MS = 3200;
+const IDLE_COVER_RETURN_MS = 15000;
+const GESTURE_INTRO_MS = 5000;
 
 let activePhase = -1;
 let activeSelectedOptionId = null;
@@ -37,6 +38,11 @@ let firstChaosTriggered = false;
 let blackoutTimer = null;
 let harmonyTextTimer = null;
 let phaseDebounceTimer = null;
+let idleCoverTimer = null;
+let idleCoverVisible = true;
+let hasSeenTrackedPerson = false;
+let gestureIntroActive = false;
+let gestureIntroEndsAt = 0;
 let textVisible = false;
 let heroTimeline = null;
 let stopAppStateSync = null;
@@ -48,9 +54,59 @@ const _blurOverlay = () => document.getElementById('data-transition-overlay');
 const _headline = () => document.getElementById('main-headline');
 const _subHeadline = () => document.getElementById('sub-headline');
 const _rule = () => document.querySelector('.headline-rule');
+const _idleCover = () => document.getElementById('idle-attract-cover');
+
+const HARMONY_COPY_BY_OPTION = {
+  'kraft-heinz': 'RECIPES<br>THAT<br><span class="text-accent">CONVERT</span>',
+  mondelez: 'PROVE<br>IN-STORE<br><span class="text-accent">IMPACT</span>',
+  'coca-cola': 'TURN ATTRACTION<br>INTO<br><span class="text-accent">ACTION</span>',
+};
 
 export function getActivePhase() {
   return activePhase;
+}
+
+function cancelIdleCoverTimer() {
+  if (idleCoverTimer) {
+    clearTimeout(idleCoverTimer);
+    idleCoverTimer = null;
+  }
+}
+
+function setIdleCoverVisible(visible) {
+  const cover = _idleCover();
+  if (!cover || idleCoverVisible === visible) return;
+
+  idleCoverVisible = visible;
+  cover.classList.toggle('visible', visible);
+  cover.setAttribute('aria-hidden', visible ? 'false' : 'true');
+}
+
+export function syncIdleCover(poseDetected) {
+  const cover = _idleCover();
+  if (!cover) return;
+
+  if (poseDetected) {
+    hasSeenTrackedPerson = true;
+    cancelIdleCoverTimer();
+    setIdleCoverVisible(false);
+    return;
+  }
+
+  if (!hasSeenTrackedPerson) {
+    cancelIdleCoverTimer();
+    setIdleCoverVisible(true);
+    return;
+  }
+
+  if (idleCoverVisible || idleCoverTimer) return;
+
+  idleCoverTimer = setTimeout(() => {
+    idleCoverTimer = null;
+    if (hasSeenTrackedPerson) {
+      setIdleCoverVisible(true);
+    }
+  }, IDLE_COVER_RETURN_MS);
 }
 
 function getPhaseName(phase) {
@@ -100,6 +156,8 @@ function clearAllTimers() {
   if (blackoutTimer) { clearTimeout(blackoutTimer); blackoutTimer = null; }
   if (harmonyTextTimer) { clearTimeout(harmonyTextTimer); harmonyTextTimer = null; }
   if (phaseDebounceTimer) { clearTimeout(phaseDebounceTimer); phaseDebounceTimer = null; }
+  gestureIntroActive = false;
+  gestureIntroEndsAt = 0;
 }
 
 function hideText(dur = 1.0) {
@@ -139,6 +197,11 @@ function showTextWithOverlay(headlineHTML, subHTML) {
   const blurOverlay = _blurOverlay();
   if (!headline || !subHeadline || !rule || !overlay || !blurOverlay) return;
 
+  const textOutDuration = textVisible ? TEXT_OUT_DUR : 0.12;
+  const headlineInStart = textOutDuration + (textVisible ? 0.24 : 0.12);
+  const ruleInStart = textOutDuration + (textVisible ? 0.32 : 0.18);
+  const subHeadlineInStart = textOutDuration + (textVisible ? 0.4 : 0.22);
+
   killHeroTimeline();
 
   heroTimeline = gsap.timeline({ onComplete: () => { heroTimeline = null; } });
@@ -157,7 +220,7 @@ function showTextWithOverlay(headlineHTML, subHTML) {
     .to([headline, rule, subHeadline], {
       autoAlpha: 0,
       y: -10,
-      duration: textVisible ? TEXT_OUT_DUR : 0.12,
+      duration: textOutDuration,
       stagger: 0.06,
       ease: 'power3.inOut',
     }, 0)
@@ -167,27 +230,27 @@ function showTextWithOverlay(headlineHTML, subHTML) {
       gsap.set(headline, { y: 18, autoAlpha: 0, scale: 0.988 });
       gsap.set(rule, { y: 12, autoAlpha: 0, scaleX: 0.82, transformOrigin: '50% 50%' });
       gsap.set(subHeadline, { y: 18, autoAlpha: 0 });
-    })
+    }, null, textOutDuration)
     .to(headline, {
       autoAlpha: 1,
       y: 0,
       scale: 1,
       duration: TEXT_IN_DUR,
       ease: 'power3.out',
-    }, textVisible ? 0.24 : 0.12)
+    }, headlineInStart)
     .to(rule, {
       autoAlpha: 0.45,
       y: 0,
       scaleX: 1,
       duration: 0.72,
       ease: 'power3.out',
-    }, textVisible ? 0.32 : 0.18)
+    }, ruleInStart)
     .to(subHeadline, {
       autoAlpha: 1,
       y: 0,
       duration: TEXT_IN_DUR,
       ease: 'power3.out',
-    }, textVisible ? 0.4 : 0.22);
+    }, subHeadlineInStart);
 
   textVisible = true;
 }
@@ -197,6 +260,26 @@ function showGestureCta() {
     'HARNESS THE <span class="text-accent">DATA.</span>',
     'Raise your hand.<br>Select a brand.'
   );
+}
+
+function showGestureIntroCopy() {
+  showTextWithOverlay(
+    'WITHOUT <span class="text-accent">DATA,</span>',
+    'Brands struggle to attract the right attention.'
+  );
+}
+
+function revealGestureSelector() {
+  animateBrandsFlyIn();
+  startFloatingAnimation();
+  startRingPulse();
+  startTechGlow();
+  showGestureCta();
+}
+
+function showHarmonyCopy(selectedOptionId) {
+  const headlineHTML = HARMONY_COPY_BY_OPTION[selectedOptionId] || HARMONY_COPY_BY_OPTION['coca-cola'];
+  showTextWithOverlay(headlineHTML, '');
 }
 
 function setBackground(className) {
@@ -259,40 +342,32 @@ function triggerChaos(previousPhase) {
 function triggerGesture(previousPhase) {
   if (blackoutTimer) { clearTimeout(blackoutTimer); blackoutTimer = null; }
 
-  // If coming from CHAOS, just show brands and update text — no flash transition
-  if (previousPhase === PHASE.CHAOS || previousPhase === PHASE.POSE_LOST) {
-    setBackground('bg-chaos');
-    animateBrandsFlyIn();
-    startFloatingAnimation();
-    startRingPulse();
-    startTechGlow();
-    showGestureCta();
-    return;
-  }
+  setBackground('bg-chaos');
+  hideBrands();
+  showGestureIntroCopy();
+  gestureIntroActive = true;
+  gestureIntroEndsAt = performance.now() + GESTURE_INTRO_MS;
+}
 
-  playSceneTransition(() => {
-    setBackground('bg-chaos');
-    animateBrandsFlyIn();
-    startFloatingAnimation();
-    startRingPulse();
-    startTechGlow();
-  }, () => {
-    showGestureCta();
-  });
+export function syncGestureIntro(nowMs = performance.now()) {
+  if (!gestureIntroActive || activePhase !== PHASE.GESTURE) return;
+  if (nowMs < gestureIntroEndsAt) return;
+
+  gestureIntroActive = false;
+  gestureIntroEndsAt = 0;
+  revealGestureSelector();
 }
 
 function triggerHarmony(selectedOptionId) {
+  if (harmonyTextTimer) { clearTimeout(harmonyTextTimer); harmonyTextTimer = null; }
   setBackground('bg-harmony');
   animateHarmony(selectedOptionId);
-  hideText(0.95);
-
+  hideText(0.3);
   harmonyTextTimer = setTimeout(() => {
-    if (activePhase === PHASE.HARMONY) {
-      showGestureCta();
-
-    }
     harmonyTextTimer = null;
-  }, Math.max(HARMONY_COPY_DELAY_MS, HARMONY_CTA_DELAY_MS));
+    if (activePhase !== PHASE.HARMONY || activeSelectedOptionId !== selectedOptionId) return;
+    showHarmonyCopy(selectedOptionId);
+  }, HARMONY_COPY_DELAY_MS);
 }
 
 function triggerPoseLost() {

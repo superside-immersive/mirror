@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AMC Interactive Mirror — Albertsons Media Collective</title>
 
-  <!-- Google Fonts: Inter — clean, premium corporate typography -->
+  <!-- Google Fonts: Inter + Montserrat for branded cover typography -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700;800;900&family=Montserrat:wght@500;700;800;900&display=swap" rel="stylesheet">
 
   <!-- Brand Design Tokens + UI Styles -->
   <link rel="stylesheet" href="css/brand-tokens.css">
@@ -38,6 +38,25 @@
     <div id="loading-text">Initializing...</div>
   </div>
 
+  <div id="idle-attract-cover" class="visible" aria-hidden="false">
+    <div class="idle-cover-emblem-wrap" aria-hidden="true">
+      <img class="idle-cover-emblem" src="assets/amc-mark.svg" alt="">
+    </div>
+
+    <div class="idle-cover-content">
+      <div class="idle-cover-logo" aria-label="Albertsons Media Collective logo" role="img">
+        <span class="idle-cover-logo-wordmark"></span>
+        <img class="idle-cover-logo-mark" src="assets/amc-mark.svg" alt="">
+      </div>
+
+      <div class="idle-cover-copy">
+        <span class="idle-cover-accent" aria-hidden="true"></span>
+        <h1 class="idle-cover-title">Power of Attraction</h1>
+        <p class="idle-cover-subtitle">Step in to see how AMC's data magnetizes your ideal buyer.</p>
+      </div>
+    </div>
+  </div>
+
   <!-- ═══════════════════════════════════════════════════════
        FPS COUNTER
        ═══════════════════════════════════════════════════════ -->
@@ -60,17 +79,6 @@
        DATA SCAN TRANSITION OVERLAY
        ═══════════════════════════════════════════════════════ -->
   <div id="data-transition-overlay"></div>
-
-  <div id="signature-overlay" aria-hidden="true">
-    <div class="signature-grid"></div>
-    <div class="signature-rings">
-      <div class="signature-ring ring-a"></div>
-      <div class="signature-ring ring-b"></div>
-    </div>
-    <div class="signature-bubbles">
-      <span></span><span></span><span></span><span></span><span></span><span></span>
-    </div>
-  </div>
 
   <!-- ═══════════════════════════════════════════════════════
        UI OVERLAY LAYER
@@ -109,6 +117,10 @@
       <hr class="headline-rule">
       <p id="sub-headline"></p>
 
+    </div>
+
+    <div id="harmony-qr" aria-hidden="true">
+      <img id="harmony-qr-image" src="assets/amc-results-qr.png" alt="QR code for Albertsons Media Collective results page">
     </div>
 
   </div>

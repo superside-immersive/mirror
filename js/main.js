@@ -4,7 +4,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import { applyPhaseState } from './appState.js';
-import { PHASE } from './config.js';
+import { PHASE, toggleBodySchoolEnabled } from './config.js';
 import { generateCubeData, generateShelfPositions, generateStaticShelfItems, cubeRand, staticShelfItems } from './cubeData.js';
 import { initThree, onResize }  from './scene.js';
 import { initPhysics, createCubes }           from './physics.js';
@@ -44,9 +44,21 @@ function setupDebugControls() {
   }
 
   window.addEventListener('keydown', (event) => {
+    const target = event.target;
+    const isTypingTarget = target instanceof HTMLElement
+      && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
+
+    if (isTypingTarget || event.repeat) return;
+
     if (event.key.toLowerCase() === 'd') {
       controls.classList.toggle('visible');
       document.body.classList.toggle('debug-ui');
+      return;
+    }
+
+    if (event.key.toLowerCase() === 'q') {
+      const enabled = toggleBodySchoolEnabled();
+      console.info(`Body school motion ${enabled ? 'enabled' : 'disabled'}.`);
     }
   });
 

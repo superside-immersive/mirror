@@ -157,7 +157,7 @@ export function animateHarmony(selectedOptionId) {
   const option = getProductOptionById(selectedOptionId);
   const tl = gsap.timeline();
 
-  document.body.dataset.signature = option.signatureStyle;
+  clearSignatureOverlay();
   updateSelectedOptionDebug(selectedOptionId);
 
   tl.to(dataOverlay, {

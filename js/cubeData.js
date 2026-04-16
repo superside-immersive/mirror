@@ -18,6 +18,22 @@ export const cubeRand = [];         // active product metadata (body-capable + a
 export const shelfHome = [];        // resting shelf position for active products
 export const staticShelfItems = []; // decorative dense shelf-only instances
 
+const bodySegmentLookup = Array.from({ length: BODY_CUBES }, () => null);
+for (let segmentIndex = 0; segmentIndex < segRanges.length; segmentIndex++) {
+  const { start, end, seg } = segRanges[segmentIndex];
+  for (let cubeIndex = start; cubeIndex < end; cubeIndex++) {
+    const localIndex = cubeIndex - start;
+    bodySegmentLookup[cubeIndex] = {
+      index: segmentIndex,
+      type: seg.type,
+      count: seg.count,
+      localIndex,
+      progress: seg.count > 1 ? localIndex / (seg.count - 1) : 0.5,
+      thickness: seg.thickness ?? seg.radius ?? 0.05,
+    };
+  }
+}
+
 // ─── Helpers ────────────────────────────────────────────────
 const rand = (a, b) => a + Math.random() * (b - a);
 
@@ -169,11 +185,8 @@ function createActiveItemData(index, catalog) {
     ? catalog.variants[heroVariantId]
     : pickRandomVariant(catalog, option.id);
 
-  let seg = null;
-  if (index < BODY_CUBES) {
-    const range = segRanges.find(r => index >= r.start && index < r.end);
-    seg = range?.seg || null;
-  }
+  const bodySegment = index < BODY_CUBES ? bodySegmentLookup[index] : null;
+  const seg = bodySegment ? segRanges[bodySegment.index].seg : null;
 
   const sizeBias = seg ? seg.sz : rand(0.85, 1.05);
   const targetHeight = rand(0.10, 0.22) * sizeBias;
@@ -195,6 +208,13 @@ function createActiveItemData(index, catalog) {
     ry: (Math.random() - 0.5) * 0.6,
     rz: (Math.random() - 0.5) * 0.6,
     motionSeed: Math.random(),
+    bodySegmentIndex: bodySegment?.index ?? -1,
+    bodySegmentType: bodySegment?.type ?? null,
+    bodySegmentLocalIndex: bodySegment?.localIndex ?? -1,
+    bodySegmentCount: bodySegment?.count ?? 0,
+    bodySegmentProgress: bodySegment?.progress ?? 0.5,
+    bodySegmentThickness: bodySegment?.thickness ?? 0,
+    bodySegmentOrbit: bodySegment ? bodySegment.localIndex / Math.max(1, bodySegment.count) : 0,
     restQuaternion: new THREE.Quaternion(),
     position: new THREE.Vector3(),
   };
@@ -208,6 +228,8 @@ function createActiveItemData(index, catalog) {
     const row = Math.floor(localI / cols);
     data.qu = Math.min(1, (col + 0.1 + Math.random() * 0.8) / cols);
     data.qv = Math.min(1, (row + 0.1 + Math.random() * 0.8) / rows);
+    data.bodySegmentProgress = data.qv;
+    data.bodySegmentOrbit = data.qu;
   }
 
   return data;

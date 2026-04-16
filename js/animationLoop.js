@@ -8,14 +8,16 @@ import { applyPhaseState }                 from './appState.js';
 import {
   STIFFNESS, MAX_SPEED, SPAWN_RATE,
   PERF_HUD_UPDATE_MS,
-  TOTAL_CUBES, BODY_CUBES, PHASE,
+  TOTAL_CUBES, BODY_CUBES, PHASE, BODY_SCHOOL,
 } from './config.js';
 import { cubeRand, shelfHome }              from './cubeData.js';
 import { scene, camera, renderer, clock }   from './scene.js';
 import { world, cubes }                     from './physics.js';
 import { detectPose, poseState }            from './mediapipe.js';
 import { PhaseStateMachine }                from './gestureDetector.js';
+import { syncGestureIntro, syncIdleCover }  from './uiPhases.js';
 import { syncActiveProductTransforms }      from './productRenderer.js';
+import { computeBodySchoolMotionFrame }     from './bodySchoolMotion.js';
 import { applyStackBuildSignature }         from './signatures/stackBuild.js';
 import { applyCalibrationSnapSignature }    from './signatures/calibrationSnap.js';
 import { applyFizzHaloSignature }           from './signatures/fizzHalo.js';
@@ -131,6 +133,42 @@ function getBodyYBounds(bodyTargets) {
   };
 }
 
+function applyBodyBoundAngularVelocity(bodyAngularVelocity, item, index, time, distSq, schoolMotion) {
+  let targetX = bodyAngularVelocity.x;
+  let targetY = bodyAngularVelocity.y;
+  let targetZ = bodyAngularVelocity.z;
+
+  if (distSq > BODY_ROTATION_DIST_SQ) {
+    if (getVectorLengthSq(bodyAngularVelocity) < ANGULAR_SETTLE_THRESHOLD_SQ) {
+      targetX = item.rx;
+      targetY = item.ry;
+      targetZ = item.rz;
+    }
+  } else {
+    const idx = index * 1.37;
+    const amp = 0.35;
+    targetX = Math.sin(time * 1.8 + idx) * amp * item.rx * 3;
+    targetY = Math.cos(time * 1.4 + idx * 0.7) * amp * item.ry * 3;
+    targetZ = Math.sin(time * 2.1 + idx * 1.3) * amp * item.rz * 3;
+  }
+
+  if (schoolMotion?.rotationBlend > 0) {
+    const blend = Math.min(1, schoolMotion.rotationBlend);
+    targetX += schoolMotion.angularVelocity.x;
+    targetY += schoolMotion.angularVelocity.y;
+    targetZ += schoolMotion.angularVelocity.z;
+
+    bodyAngularVelocity.x += (targetX - bodyAngularVelocity.x) * blend;
+    bodyAngularVelocity.y += (targetY - bodyAngularVelocity.y) * blend;
+    bodyAngularVelocity.z += (targetZ - bodyAngularVelocity.z) * blend;
+    return;
+  }
+
+  bodyAngularVelocity.x = targetX;
+  bodyAngularVelocity.y = targetY;
+  bodyAngularVelocity.z = targetZ;
+}
+
 // ─── Main Animation Loop ────────────────────────────────────
 export function animate() {
   requestAnimationFrame(animate);
@@ -145,6 +183,8 @@ export function animate() {
   // ── 2. Gesture Detection → Phase Transitions ──
   const phaseStart = performance.now();
   const { poseActive, bodyTargets, currentLandmarks } = poseState;
+  syncIdleCover(poseActive);
+  syncGestureIntro(frameStart);
   const result = phaseStateMachine.update(poseActive, currentLandmarks);
   const selectedOptionId = result.phase === PHASE.HARMONY ? result.selectedOptionId : null;
   if (result.changed) {
@@ -160,6 +200,13 @@ export function animate() {
   const needsHarmonyBounds = result.phase === PHASE.HARMONY && !!selectedOptionId;
   const bodyBounds = needsHarmonyBounds ? getBodyYBounds(bodyTargets) : null;
   const harmonyElapsedMs = needsHarmonyBounds ? phaseStateMachine.getTimeInPhase() : 0;
+  const bodySchoolFrame = BODY_SCHOOL.enabled && poseActive && bodyTargets
+    ? computeBodySchoolMotionFrame({
+      bodyTargets,
+      time,
+      phase: result.phase,
+    })
+    : null;
 
   // ── 4. Drive each cube toward its target ──
   const driveStart = performance.now();
@@ -178,6 +225,7 @@ export function animate() {
     const isSelectedOption = !selectedOptionId || item.optionId === selectedOptionId;
     const hasBodyTarget = poseActive && i < BODY_CUBES && bodyTargets?.[i];
     let isBodyBound = hasBodyTarget;
+    let schoolMotion = null;
 
     if (hasBodyTarget && result.phase === PHASE.HARMONY) {
       isBodyBound = isSelectedOption;
@@ -194,6 +242,13 @@ export function animate() {
         targetY += Math.cos(phaseNoise * 0.7) * 0.05;
         targetZ += Math.sin(phaseNoise * 1.3) * 0.05;
         renderScale *= 1.02;
+      }
+
+      schoolMotion = bodySchoolFrame ? bodySchoolFrame[i] : null;
+      if (schoolMotion) {
+        targetX += schoolMotion.targetOffset.x;
+        targetY += schoolMotion.targetOffset.y;
+        targetZ += schoolMotion.targetOffset.z;
       }
 
       if (result.phase === PHASE.HARMONY && isSelectedOption) {
@@ -265,21 +320,7 @@ export function animate() {
 
     // Rotation behaviour
     if (isBodyBound) {
-      if (distSq > BODY_ROTATION_DIST_SQ) {
-        const d = item;
-        if (getVectorLengthSq(bodyAngularVelocity) < ANGULAR_SETTLE_THRESHOLD_SQ) {
-          bodyAngularVelocity.x = d.rx;
-          bodyAngularVelocity.y = d.ry;
-          bodyAngularVelocity.z = d.rz;
-        }
-      } else {
-        const d   = item;
-        const idx = i * 1.37;
-        const amp = 0.35;
-        bodyAngularVelocity.x = Math.sin(time * 1.8 + idx) * amp * d.rx * 3;
-        bodyAngularVelocity.y = Math.cos(time * 1.4 + idx * 0.7) * amp * d.ry * 3;
-        bodyAngularVelocity.z = Math.sin(time * 2.1 + idx * 1.3) * amp * d.rz * 3;
-      }
+      applyBodyBoundAngularVelocity(bodyAngularVelocity, item, i, time, distSq, schoolMotion);
     } else if (distSq > FLOCK_DIST_SQ) {
       const d = item;
       bodyAngularVelocity.x += (d.rx * 2 - bodyAngularVelocity.x) * 0.05;

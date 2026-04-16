@@ -20,6 +20,32 @@ export const STIFFNESS   = 3;        // how fast cubes seek their target
 export const MAX_SPEED   = 4;        // velocity cap (scene units/s)
 export const SMOOTH      = 0.55;     // landmark temporal smoothing
 export const SPAWN_RATE  = 18;       // active products made visible per frame
+export const BODY_SCHOOL = {
+  enabled: true,
+  positionAmplitude: 1,
+  rotationBlend: 0.72,
+  rotationStrength: 1.05,
+  travelSpeed: 2.15,
+  phaseLag: 4.8,
+  harmonyAttenuation: 0.62,
+  chaosAttenuation: 0.84,
+  maxLineOffset: 0.055,
+  maxQuadOffset: 0.04,
+  maxClusterOffset: 0.03,
+};
+
+export function isBodySchoolEnabled() {
+  return BODY_SCHOOL.enabled;
+}
+
+export function setBodySchoolEnabled(enabled) {
+  BODY_SCHOOL.enabled = !!enabled;
+  return BODY_SCHOOL.enabled;
+}
+
+export function toggleBodySchoolEnabled() {
+  return setBodySchoolEnabled(!BODY_SCHOOL.enabled);
+}
 
 // ─── Camera & Pose Projection ──────────────────────────────
 export const CAMERA_FOV = 60;
@@ -113,7 +139,7 @@ export const GESTURE_COOLDOWN_MS  = 1200;
 export const GESTURE_TIMEOUT_MS   = 5000;
 export const CHAOS_AUTO_GESTURE_MS = 10000;
 export const HARMONY_HOLD_MS      = 4500;
-export const HARMONY_COPY_DELAY_MS = 2500;
+export const HARMONY_COPY_DELAY_MS = 3000;
 export const POSE_LOST_RETURN_MS  = 2600;
 
 // ─── Phase Constants ────────────────────────────────────────
