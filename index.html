@@ -4,15 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>amcatpossible</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
       color-scheme: dark;
-      --bg: #0c1019;
-      --panel: rgba(20, 28, 46, 0.82);
-      --panel-border: rgba(145, 184, 255, 0.18);
-      --text: #ecf3ff;
-      --muted: #a7b9d6;
-      --accent: #8ac6ff;
+      --bg: #07101a;
+      --bg-deep: #02060c;
+      --panel: rgba(8, 16, 28, 0.8);
+      --panel-strong: rgba(10, 20, 34, 0.94);
+      --line: rgba(23, 125, 194, 0.22);
+      --line-strong: rgba(23, 125, 194, 0.4);
+      --navy: #0d2d5b;
+      --blue: #177dc2;
+      --text: #eff5ff;
+      --muted: #a3b7cf;
     }
 
     * {
@@ -22,258 +29,202 @@
     body {
       margin: 0;
       min-height: 100vh;
-      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: var(--text);
-      background:
-        radial-gradient(circle at top, rgba(73, 126, 212, 0.26), transparent 30%),
-        linear-gradient(160deg, #08101b 0%, #111a2b 55%, #08111e 100%);
       display: grid;
       place-items: center;
       padding: 24px;
+      font-family: 'Inter', system-ui, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top, rgba(23, 125, 194, 0.22), transparent 30%),
+        linear-gradient(160deg, var(--bg) 0%, #0b1523 58%, var(--bg-deep) 100%);
     }
 
     main {
-      width: min(960px, 100%);
+      width: min(980px, 100%);
       display: grid;
-      gap: 16px;
+      gap: 18px;
     }
 
     .hero {
-      padding: 28px;
-      border: 1px solid var(--panel-border);
+      position: relative;
+      padding: 32px;
+      border: 1px solid var(--line);
       border-radius: 24px;
-      background: var(--panel);
+      background: linear-gradient(180deg, rgba(13, 45, 91, 0.34), rgba(7, 14, 24, 0.94));
       backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
       box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 32px;
+      right: 32px;
+      height: 3px;
+      background: linear-gradient(90deg, transparent 0%, var(--blue) 24%, transparent 62%);
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      right: 28px;
+      bottom: 24px;
+      width: 118px;
+      height: 118px;
+      border: 1px solid rgba(23, 125, 194, 0.12);
+      border-radius: 24px;
+      opacity: 0.55;
+    }
+
+    .eyebrow {
+      position: relative;
+      z-index: 1;
+      margin-bottom: 12px;
+      color: #9fd8ff;
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
     }
 
     h1 {
-      margin: 0 0 8px;
-      font-size: clamp(2rem, 4vw, 3.5rem);
-      line-height: 0.95;
+      position: relative;
+      z-index: 1;
+      margin: 0 0 10px;
+      font-family: 'Montserrat', 'Inter', sans-serif;
+      font-size: clamp(2.4rem, 6vw, 4.8rem);
+      line-height: 0.94;
+      letter-spacing: -0.05em;
+      max-width: 11ch;
     }
 
-    p {
+    .hero p {
+      position: relative;
+      z-index: 1;
       margin: 0;
+      max-width: 44rem;
       color: var(--muted);
       font-size: 1rem;
-      line-height: 1.5;
+      line-height: 1.55;
     }
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 18px;
     }
 
-    a.card {
-      display: block;
-      padding: 20px;
+    .card {
+      position: relative;
+      display: grid;
+      gap: 12px;
+      padding: 22px;
+      border: 1px solid var(--line);
       border-radius: 20px;
-      border: 1px solid var(--panel-border);
-      background: rgba(11, 17, 29, 0.8);
+      background: linear-gradient(180deg, var(--panel-strong), var(--panel));
       color: inherit;
       text-decoration: none;
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22);
       transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+      overflow: hidden;
     }
 
-    a.card:hover {
-      transform: translateY(-2px);
-      border-color: rgba(138, 198, 255, 0.42);
-      background: rgba(16, 25, 42, 0.92);
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 22px;
+      right: 22px;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--blue), transparent);
+      opacity: 0.9;
     }
 
-    .eyebrow {
-      margin-bottom: 10px;
-      color: var(--accent);
-      font-size: 0.78rem;
+    .card:hover {
+      transform: translateY(-3px);
+      border-color: var(--line-strong);
+      background: linear-gradient(180deg, rgba(13, 24, 40, 0.96), rgba(8, 15, 27, 0.92));
+    }
+
+    .card-route {
+      font-size: 0.76rem;
       font-weight: 700;
-      letter-spacing: 0.12em;
+      letter-spacing: 0.14em;
       text-transform: uppercase;
+      color: #9fd8ff;
     }
 
-    .title {
-      margin-bottom: 6px;
-      font-size: 1.35rem;
-      font-weight: 700;
+    .card-title {
+      font-family: 'Montserrat', 'Inter', sans-serif;
+      font-size: 1.55rem;
+      line-height: 1;
+      letter-spacing: -0.04em;
+    }
+
+    .card-copy {
+      color: var(--muted);
+      font-size: 0.96rem;
+      line-height: 1.55;
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 14px;
+      }
+
+      .hero {
+        padding: 24px 20px;
+      }
+
+      .hero::before {
+        left: 20px;
+        right: 20px;
+      }
+
+      .hero::after {
+        width: 84px;
+        height: 84px;
+        right: 16px;
+        bottom: 16px;
+      }
+
+      h1 {
+        max-width: 100%;
+        font-size: clamp(2.1rem, 11vw, 3.8rem);
+      }
     }
   </style>
 </head>
 <body>
   <main>
     <section class="hero">
-      <div class="eyebrow">amcatpossible</div>
-      <h1>Three experiences, one deployment.</h1>
-      <p>Use the routes below to open the AMC portal, mirror, and receipt experiences from the same Vercel project.</p>
+      <div class="eyebrow">Albertsons Media Collective</div>
+      <h1>Three experiences, one direct launch.</h1>
+      <p>This is the menu page. The experience routes themselves are intentionally stripped back so AR and camera flows open with minimal chrome.</p>
     </section>
 
     <section class="grid">
       <a class="card" href="/portal">
-        <div class="eyebrow">/portal</div>
-        <div class="title">Portal</div>
-        <p>Built from the former image experience and served as a self-contained static route.</p>
+        <div class="card-route">/portal</div>
+        <div class="card-title">Portal</div>
+        <div class="card-copy">Image-tracked portal AR with only live status feedback on top of the scene.</div>
       </a>
 
       <a class="card" href="/mirror">
-        <div class="eyebrow">/mirror</div>
-        <div class="title">Mirror</div>
-        <p>The original root mirror experience, now isolated in its own subfolder and subpath.</p>
+        <div class="card-route">/mirror</div>
+        <div class="card-title">Mirror</div>
+        <div class="card-copy">Interactive mirror flow with a cleaner selector and a lighter presentation layer.</div>
       </a>
 
       <a class="card" href="/receipt">
-        <div class="eyebrow">/receipt</div>
-        <div class="title">Receipt</div>
-        <p>The former receiptar experience, preserved as its own static route.</p>
+        <div class="card-route">/receipt</div>
+        <div class="card-title">Receipt</div>
+        <div class="card-copy">Fast reward capture flow with concise guidance, direct actions, and no oversized onboarding card.</div>
       </a>
     </section>
   </main>
-</body>
-</html><!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AMC Interactive Mirror — Albertsons Media Collective</title>
-
-  <!-- Google Fonts: Inter + Montserrat for branded cover typography -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700;800;900&family=Montserrat:wght@500;700;800;900&display=swap" rel="stylesheet">
-
-  <!-- Brand Design Tokens + UI Styles -->
-  <link rel="stylesheet" href="css/brand-tokens.css">
-  <link rel="stylesheet" href="css/ui-styles.css">
-
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
-      }
-    }
-  </script>
-
-  <!-- GSAP Animation Engine -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-</head>
-
-<body>
-
-  <!-- ═══════════════════════════════════════════════════════
-       LOADING OVERLAY
-       ═══════════════════════════════════════════════════════ -->
-  <div id="loading">
-    <!-- Official AMC logo -->
-    <img class="loading-logo loading-logo-official" src="assets/amc-logo.svg" alt="Albertsons Media Collective logo">
-    <div class="loading-spinner"></div>
-    <div id="loading-text">Initializing...</div>
-  </div>
-
-  <div id="idle-attract-cover" class="visible" aria-hidden="false">
-    <div class="idle-cover-emblem-wrap" aria-hidden="true">
-      <img class="idle-cover-emblem" src="assets/amc-mark.svg" alt="">
-    </div>
-
-    <div class="idle-cover-content">
-      <div class="idle-cover-logo" aria-label="Albertsons Media Collective logo" role="img">
-        <span class="idle-cover-logo-wordmark"></span>
-        <img class="idle-cover-logo-mark" src="assets/amc-mark.svg" alt="">
-      </div>
-
-      <div class="idle-cover-copy">
-        <span class="idle-cover-accent" aria-hidden="true"></span>
-        <h1 class="idle-cover-title">Power of Attraction</h1>
-        <p class="idle-cover-subtitle">Step in to see how AMC's data magnetizes your ideal buyer.</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═══════════════════════════════════════════════════════
-       FPS COUNTER
-       ═══════════════════════════════════════════════════════ -->
-  <div id="fps"></div>
-    <div id="perf-hud"></div>
-
-  <!-- ═══════════════════════════════════════════════════════
-       HIDDEN WEBCAM
-       ═══════════════════════════════════════════════════════ -->
-  <video id="webcam" autoplay playsinline></video>
-
-  <!-- ═══════════════════════════════════════════════════════
-       BACKGROUND STATE LAYER (CSS gradient transitions)
-       Three.js canvas is behind this; this adds the phase-
-       dependent color overlays as a semi-transparent layer.
-       ═══════════════════════════════════════════════════════ -->
-  <div id="mock-3d-canvas" style="position:fixed;inset:0;z-index:1;pointer-events:none;opacity:0;background:transparent;"></div>
-
-  <!-- ═══════════════════════════════════════════════════════
-       DATA SCAN TRANSITION OVERLAY
-       ═══════════════════════════════════════════════════════ -->
-  <div id="data-transition-overlay"></div>
-
-  <!-- ═══════════════════════════════════════════════════════
-       UI OVERLAY LAYER
-       ═══════════════════════════════════════════════════════ -->
-  <div id="ui-layer">
-
-    <!-- AMC BRAND HEADER -->
-    <div class="brand-header">
-      <img class="brand-header-logo brand-header-logo-official" src="assets/amc-logo.svg" alt="Albertsons Media Collective logo">
-    </div>
-
-    <!-- SELECTOR UI -->
-    <div id="selector-panel" class="interactive" aria-live="polite">
-      <div id="brands-container">
-        <div class="brand-logo-container" id="logo-a">
-          <button class="brand-logo brand-kraft" data-option="kraft-heinz" type="button">
-            <span class="logo-label logo-label-fallback">Kraft Heinz</span>
-          </button>
-        </div>
-        <div class="brand-logo-container" id="logo-b">
-          <button class="brand-logo brand-mondelez" data-option="mondelez" type="button">
-            <img class="brand-logo-image brand-logo-image-mondelez" src="assets/logos/MDLZ_Logo/MDLZ Logo Reversed RGB.png" alt="Mondelez logo">
-          </button>
-        </div>
-        <div class="brand-logo-container" id="logo-c">
-          <button class="brand-logo brand-coca" data-option="coca-cola" type="button">
-            <img class="brand-logo-image brand-logo-image-coca" src="assets/logos/coca-cola-company-white.svg" alt="Coca-Cola logo">
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- MAIN HERO COPY -->
-    <div id="copy-container">
-      <h1 id="main-headline"></h1>
-      <hr class="headline-rule">
-      <p id="sub-headline"></p>
-
-    </div>
-
-    <div id="harmony-qr" aria-hidden="true">
-      <img id="harmony-qr-image" src="assets/amc-results-qr.png" alt="QR code for Albertsons Media Collective results page">
-    </div>
-
-  </div>
-
-  <!-- ═══════════════════════════════════════════════════════
-       DEVELOPER CONTROLS (visible with ?debug in URL)
-       ═══════════════════════════════════════════════════════ -->
-  <div id="dev-controls">
-    <span class="dev-label">Scene:</span>
-    <button class="dev-btn" data-phase="0">0. BOOT</button>
-    <button class="dev-btn" data-phase="1">1. IDLE</button>
-    <button class="dev-btn" data-phase="2">2. CHAOS</button>
-    <button class="dev-btn" data-phase="3">3. GESTURE</button>
-    <button class="dev-btn dev-btn-primary" data-phase="4">4. HARMONY</button>
-    <button class="dev-btn" data-phase="5">5. POSE LOST</button>
-    <button class="dev-btn" data-phase="6">6. ERROR</button>
-    <span class="dev-status" id="dev-current-option">Option: none</span>
-  </div>
-
-  <!-- ═══════════════════════════════════════════════════════
-       APPLICATION ENTRY POINT
-       ═══════════════════════════════════════════════════════ -->
-  <script type="module" src="js/main.js"></script>
-
 </body>
 </html>

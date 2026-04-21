@@ -1,0 +1,148 @@
+:root {
+  color-scheme: dark;
+  --navy: #0d2d5b;
+  --blue: #177dc2;
+  --text: rgba(255, 255, 255, 0.94);
+  --muted: rgba(210, 224, 240, 0.74);
+  --line: rgba(23, 125, 194, 0.22);
+  --panel: rgba(6, 14, 26, 0.64);
+  --shadow: 0 14px 32px rgba(0, 0, 0, 0.28);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #05070f;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+body.portal-shell {
+  position: relative;
+}
+
+body.portal-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 0 76%, rgba(23, 125, 194, 0.06) 76% 100%),
+    repeating-linear-gradient(90deg, rgba(23, 125, 194, 0.12) 0 6px, transparent 6px 18px);
+  background-size: 100% 100%, 14% 100%;
+  background-position: 0 0, right 24px top 0;
+  background-repeat: no-repeat;
+  opacity: 0.16;
+}
+
+.hud {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  z-index: 20;
+  pointer-events: none;
+}
+
+body.portal-shell-slam .hud {
+  top: 72px;
+}
+
+.status-chip {
+  width: min(360px, calc(100vw - 32px));
+  padding: 12px 14px 13px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--panel);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: var(--shadow);
+}
+
+.status-label {
+  display: block;
+  margin-bottom: 6px;
+  color: #8fd5ff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.status,
+.compatibility {
+  margin: 0;
+}
+
+.status {
+  color: var(--text);
+  font-size: 0.96rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.compatibility {
+  margin-top: 6px;
+  min-height: 1.15em;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.toggle-btn {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 30;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(8, 18, 32, 0.78);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: transform 100ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.toggle-btn:active {
+  transform: scale(0.98);
+}
+
+.toggle-btn.is-off {
+  background: rgba(23, 125, 194, 0.24);
+  border-color: rgba(23, 125, 194, 0.34);
+}
+
+@media (pointer: coarse), (max-width: 640px) {
+  .hud {
+    top: auto;
+    bottom: 16px;
+  }
+
+  body.portal-shell-slam .hud {
+    top: auto;
+    bottom: 16px;
+  }
+
+  .status-chip {
+    width: min(100%, calc(100vw - 32px));
+  }
+
+  .toggle-btn {
+    left: auto;
+    right: 16px;
+  }
+}
