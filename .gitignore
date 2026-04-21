@@ -1,0 +1,7 @@
+*.bak
+.DS_Store
+**/node_modules/
+portal/.git.embedded.backup/
+portal/dist/
+receipt/.git.embedded.backup/
+receipt/.cert/

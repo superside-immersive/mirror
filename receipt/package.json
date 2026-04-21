@@ -1,0 +1,13 @@
+{
+  "name": "amc-couch-hunt",
+  "version": "1.0.0",
+  "description": "AMC AR Couch Hunt - WebAR experience using 8th Wall SLAM",
+  "private": true,
+  "scripts": {
+    "dev": "http-server . -a 0.0.0.0 -p 4174 -c-1",
+    "serve": "http-server . -a 0.0.0.0 -p 4174 -c-1"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}

@@ -1,0 +1,356 @@
+// ═══════════════════════════════════════════════════════════
+//  animationLoop.js — Main render loop: pose detection →
+//  gesture detection → phase transitions → cube driving →
+//  physics → render
+// ═══════════════════════════════════════════════════════════
+
+import { applyPhaseState }                 from './appState.js';
+import {
+  STIFFNESS, MAX_SPEED, SPAWN_RATE,
+  PERF_HUD_UPDATE_MS,
+  TOTAL_CUBES, BODY_CUBES, PHASE, BODY_SCHOOL,
+} from './config.js';
+import { cubeRand, shelfHome }              from './cubeData.js';
+import { scene, camera, renderer, clock }   from './scene.js';
+import { world, cubes }                     from './physics.js';
+import { detectPose, poseState }            from './mediapipe.js';
+import { PhaseStateMachine }                from './gestureDetector.js';
+import { syncGestureIntro, syncIdleCover }  from './uiPhases.js';
+import { syncActiveProductTransforms }      from './productRenderer.js';
+import { computeBodySchoolMotionFrame }     from './bodySchoolMotion.js';
+import { applyStackBuildSignature }         from './signatures/stackBuild.js';
+import { applyCalibrationSnapSignature }    from './signatures/calibrationSnap.js';
+import { applyFizzHaloSignature }           from './signatures/fizzHalo.js';
+
+// ─── State ──────────────────────────────────────────────────
+let spawnCount = 0;
+const phaseStateMachine = new PhaseStateMachine();
+
+const DIST_EPSILON_SQ = 0.005 * 0.005;
+const BODY_ROTATION_DIST_SQ = 0.3 * 0.3;
+const FLOCK_DIST_SQ = 0.35 * 0.35;
+const ANGULAR_SETTLE_THRESHOLD_SQ = 0.8 * 0.8;
+const RENDER_SCALE_EPSILON = 0.0005;
+
+function getVectorLengthSq(vec) {
+  if (!vec) return 0;
+  if (typeof vec.lengthSq === 'function') return vec.lengthSq();
+
+  const x = Number.isFinite(vec.x) ? vec.x : 0;
+  const y = Number.isFinite(vec.y) ? vec.y : 0;
+  const z = Number.isFinite(vec.z) ? vec.z : 0;
+  return x * x + y * y + z * z;
+}
+
+// FPS meter
+let fpsFrames = 0, fpsLast = performance.now(), fpsCurrent = 0;
+let perfHudLast = performance.now();
+let fpsEl = null;
+let perfHudEl = null;
+
+const loopPerfState = {
+  phaseMs: 0,
+  driveMs: 0,
+  physicsMs: 0,
+  syncMs: 0,
+  renderMs: 0,
+  frameMs: 0,
+};
+
+const defaultPosePerfState = {
+  inferenceMs: 0,
+  targetMs: 0,
+  poseFps: 0,
+  captureWidth: 0,
+  captureHeight: 0,
+  captureFps: 0,
+  interpolating: false,
+  blendAlpha: 1,
+};
+
+// Export for debug controls
+export { phaseStateMachine };
+
+function updatePerfHud(nowMs, posePerf = defaultPosePerfState) {
+  fpsEl ??= document.getElementById('fps');
+  perfHudEl ??= document.getElementById('perf-hud');
+
+  fpsFrames++;
+  if (nowMs - fpsLast >= 500) {
+    fpsCurrent = Math.round(fpsFrames / ((nowMs - fpsLast) / 1000));
+    fpsFrames = 0;
+    fpsLast = nowMs;
+    if (fpsEl) fpsEl.textContent = fpsCurrent + ' FPS';
+  }
+
+  if (!perfHudEl || nowMs - perfHudLast < PERF_HUD_UPDATE_MS) return;
+
+  const cameraLabel = posePerf.captureWidth && posePerf.captureHeight
+    ? `${posePerf.captureWidth}x${posePerf.captureHeight}@${Math.round(posePerf.captureFps || 0) || '?'}fps`
+    : 'camera off';
+  const blendPct = Math.round((posePerf.blendAlpha ?? 1) * 100);
+
+  perfHudEl.textContent = [
+    `pose ${posePerf.inferenceMs.toFixed(1)}ms | targets ${posePerf.targetMs.toFixed(1)}ms | rate ${posePerf.poseFps}Hz | ${cameraLabel}`,
+    `fsm ${loopPerfState.phaseMs.toFixed(1)} | drive ${loopPerfState.driveMs.toFixed(1)} | phys ${loopPerfState.physicsMs.toFixed(1)} | sync ${loopPerfState.syncMs.toFixed(1)} | render ${loopPerfState.renderMs.toFixed(1)}`,
+    `frame ${loopPerfState.frameMs.toFixed(1)}ms | blend ${blendPct}%${posePerf.interpolating ? ' interp' : ''}`,
+  ].join('\n');
+
+  perfHudLast = nowMs;
+}
+
+function getSignatureAdjustment(item, context) {
+  switch (item.signatureStyle) {
+    case 'stack':
+      return applyStackBuildSignature(context);
+    case 'calibration':
+      return applyCalibrationSnapSignature(context);
+    case 'fizz':
+      return applyFizzHaloSignature(context);
+    default:
+      return {
+        bodyEligible: true,
+        scaleMultiplier: 1,
+        targetOffset: { x: 0, y: 0, z: 0 },
+      };
+  }
+}
+
+function getBodyYBounds(bodyTargets) {
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  for (let i = 0; i < BODY_CUBES; i++) {
+    const target = bodyTargets?.[i];
+    if (!target) continue;
+    minY = Math.min(minY, target.y);
+    maxY = Math.max(maxY, target.y);
+  }
+
+  return {
+    minY: Number.isFinite(minY) ? minY : -1,
+    maxY: Number.isFinite(maxY) ? maxY : 1,
+  };
+}
+
+function applyBodyBoundAngularVelocity(bodyAngularVelocity, item, index, time, distSq, schoolMotion) {
+  let targetX = bodyAngularVelocity.x;
+  let targetY = bodyAngularVelocity.y;
+  let targetZ = bodyAngularVelocity.z;
+
+  if (distSq > BODY_ROTATION_DIST_SQ) {
+    if (getVectorLengthSq(bodyAngularVelocity) < ANGULAR_SETTLE_THRESHOLD_SQ) {
+      targetX = item.rx;
+      targetY = item.ry;
+      targetZ = item.rz;
+    }
+  } else {
+    const idx = index * 1.37;
+    const amp = 0.35;
+    targetX = Math.sin(time * 1.8 + idx) * amp * item.rx * 3;
+    targetY = Math.cos(time * 1.4 + idx * 0.7) * amp * item.ry * 3;
+    targetZ = Math.sin(time * 2.1 + idx * 1.3) * amp * item.rz * 3;
+  }
+
+  if (schoolMotion?.rotationBlend > 0) {
+    const blend = Math.min(1, schoolMotion.rotationBlend);
+    targetX += schoolMotion.angularVelocity.x;
+    targetY += schoolMotion.angularVelocity.y;
+    targetZ += schoolMotion.angularVelocity.z;
+
+    bodyAngularVelocity.x += (targetX - bodyAngularVelocity.x) * blend;
+    bodyAngularVelocity.y += (targetY - bodyAngularVelocity.y) * blend;
+    bodyAngularVelocity.z += (targetZ - bodyAngularVelocity.z) * blend;
+    return;
+  }
+
+  bodyAngularVelocity.x = targetX;
+  bodyAngularVelocity.y = targetY;
+  bodyAngularVelocity.z = targetZ;
+}
+
+// ─── Main Animation Loop ────────────────────────────────────
+export function animate() {
+  requestAnimationFrame(animate);
+
+  const frameStart = performance.now();
+  const dt   = Math.min(clock.getDelta(), 0.05);
+  const time = clock.getElapsedTime();
+
+  // ── 1. Pose Detection ──
+  const posePerf = detectPose(frameStart) || poseState.perf || defaultPosePerfState;
+
+  // ── 2. Gesture Detection → Phase Transitions ──
+  const phaseStart = performance.now();
+  const { poseActive, bodyTargets, currentLandmarks } = poseState;
+  syncIdleCover(poseActive);
+  syncGestureIntro(frameStart);
+  const result = phaseStateMachine.update(poseActive, currentLandmarks);
+  const selectedOptionId = result.phase === PHASE.HARMONY ? result.selectedOptionId : null;
+  if (result.changed) {
+    applyPhaseState(result);
+  }
+  loopPerfState.phaseMs = performance.now() - phaseStart;
+
+  // ── 3. Progressive cube spawn ──
+  if (spawnCount < TOTAL_CUBES) {
+    spawnCount = Math.min(TOTAL_CUBES, spawnCount + SPAWN_RATE);
+  }
+
+  const needsHarmonyBounds = result.phase === PHASE.HARMONY && !!selectedOptionId;
+  const bodyBounds = needsHarmonyBounds ? getBodyYBounds(bodyTargets) : null;
+  const harmonyElapsedMs = needsHarmonyBounds ? phaseStateMachine.getTimeInPhase() : 0;
+  const bodySchoolFrame = BODY_SCHOOL.enabled && poseActive && bodyTargets
+    ? computeBodySchoolMotionFrame({
+      bodyTargets,
+      time,
+      phase: result.phase,
+    })
+    : null;
+
+  // ── 4. Drive each cube toward its target ──
+  const driveStart = performance.now();
+  for (let i = 0; i < spawnCount; i++) {
+    const { body } = cubes[i];
+    const item = cubeRand[i];
+    const home = shelfHome[i];
+    const bodyPosition = body.position;
+    const bodyVelocity = body.velocity;
+    const bodyAngularVelocity = body.angularVelocity;
+
+    let targetX = home.x;
+    let targetY = home.y;
+    let targetZ = home.z;
+    let renderScale = item.scale;
+    const isSelectedOption = !selectedOptionId || item.optionId === selectedOptionId;
+    const hasBodyTarget = poseActive && i < BODY_CUBES && bodyTargets?.[i];
+    let isBodyBound = hasBodyTarget;
+    let schoolMotion = null;
+
+    if (hasBodyTarget && result.phase === PHASE.HARMONY) {
+      isBodyBound = isSelectedOption;
+    }
+
+    if (isBodyBound) {
+      targetX = bodyTargets[i].x;
+      targetY = bodyTargets[i].y;
+      targetZ = bodyTargets[i].z;
+
+      if (result.phase === PHASE.CHAOS) {
+        const phaseNoise = time * 2.4 + item.motionSeed * 20;
+        targetX += Math.sin(phaseNoise) * 0.07;
+        targetY += Math.cos(phaseNoise * 0.7) * 0.05;
+        targetZ += Math.sin(phaseNoise * 1.3) * 0.05;
+        renderScale *= 1.02;
+      }
+
+      schoolMotion = bodySchoolFrame ? bodySchoolFrame[i] : null;
+      if (schoolMotion) {
+        targetX += schoolMotion.targetOffset.x;
+        targetY += schoolMotion.targetOffset.y;
+        targetZ += schoolMotion.targetOffset.z;
+      }
+
+      if (result.phase === PHASE.HARMONY && isSelectedOption) {
+        const adjustment = getSignatureAdjustment(item, {
+          item,
+          target: bodyTargets[i],
+          bodyMinY: bodyBounds.minY,
+          bodyMaxY: bodyBounds.maxY,
+          elapsedMs: harmonyElapsedMs,
+          time,
+        });
+
+        if (!adjustment.bodyEligible) {
+          isBodyBound = false;
+          targetX = home.x;
+          targetY = home.y;
+          targetZ = home.z;
+        } else {
+          targetX += adjustment.targetOffset.x;
+          targetY += adjustment.targetOffset.y;
+          targetZ += adjustment.targetOffset.z;
+          renderScale *= adjustment.scaleMultiplier;
+        }
+      }
+    } else {
+      renderScale *= result.phase === PHASE.HARMONY ? 0.94 : 0.96;
+    }
+
+    item.renderScale += (renderScale - item.renderScale) * 0.16;
+
+    const dx = targetX - bodyPosition.x;
+    const dy = targetY - bodyPosition.y;
+    const dz = targetZ - bodyPosition.z;
+    const distSq = dx * dx + dy * dy + dz * dz;
+
+    if (!isBodyBound && body.sleepState === 2 && distSq <= DIST_EPSILON_SQ && Math.abs(item.renderScale - renderScale) < RENDER_SCALE_EPSILON) {
+      continue;
+    }
+
+    if (distSq > DIST_EPSILON_SQ) {
+      const dist = Math.sqrt(distSq);
+      const stiff  = isBodyBound ? STIFFNESS : STIFFNESS * 0.7;
+      const maxSpd = isBodyBound ? MAX_SPEED : MAX_SPEED * 0.6;
+
+      const speed = Math.min(dist * stiff, maxSpd);
+      let vx = dx / dist * speed;
+      let vy = dy / dist * speed;
+      let vz = dz / dist * speed;
+
+      // Flock / swoop when flying back to shelf
+      if (!isBodyBound && distSq > FLOCK_DIST_SQ) {
+        const phase  = i * 2.399 + time * 2.8;
+        const fStr   = Math.min(dist, 2.5) * 0.55;
+        vx += Math.sin(phase) * fStr;
+        vy += Math.cos(phase * 0.73 + i * 0.5) * fStr * 0.6;
+        vz += Math.sin(phase * 1.17 + i * 1.1) * fStr * 0.3;
+      }
+
+      bodyVelocity.x = vx;
+      bodyVelocity.y = vy;
+      bodyVelocity.z = vz;
+
+      if (body.sleepState === 2) body.wakeUp();
+    } else {
+      bodyVelocity.set(0, 0, 0);
+      bodyAngularVelocity.set(0, 0, 0);
+      if (body.sleepState !== 2) body.sleep();
+    }
+
+    // Rotation behaviour
+    if (isBodyBound) {
+      applyBodyBoundAngularVelocity(bodyAngularVelocity, item, i, time, distSq, schoolMotion);
+    } else if (distSq > FLOCK_DIST_SQ) {
+      const d = item;
+      bodyAngularVelocity.x += (d.rx * 2 - bodyAngularVelocity.x) * 0.05;
+      bodyAngularVelocity.y += (d.ry * 2 - bodyAngularVelocity.y) * 0.05;
+      bodyAngularVelocity.z += (d.rz * 2 - bodyAngularVelocity.z) * 0.05;
+    } else {
+      const rest = item.restQuaternion;
+      body.quaternion.set(rest.x, rest.y, rest.z, rest.w);
+      bodyAngularVelocity.set(0, 0, 0);
+    }
+  }
+  loopPerfState.driveMs = performance.now() - driveStart;
+
+  // ── 5. Step physics ──
+  const physicsStart = performance.now();
+  world.step(1 / 60, dt, 1);
+  loopPerfState.physicsMs = performance.now() - physicsStart;
+
+  // ── 6. Sync instanced product transforms from physics bodies ──
+  const syncStart = performance.now();
+  syncActiveProductTransforms(cubeRand, cubes, spawnCount);
+  loopPerfState.syncMs = performance.now() - syncStart;
+
+  // ── 7. Render ──
+  const renderStart = performance.now();
+  renderer.render(scene, camera);
+  const renderEnd = performance.now();
+  loopPerfState.renderMs = renderEnd - renderStart;
+  loopPerfState.frameMs = renderEnd - frameStart;
+
+  // ── 8. FPS + frame timings ──
+  updatePerfHud(renderEnd, posePerf);
+}

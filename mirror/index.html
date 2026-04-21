@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <base href="/mirror/">
+  <title>AMC Interactive Mirror — Albertsons Media Collective</title>
+
+  <!-- Google Fonts: Inter + Montserrat for branded cover typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700;800;900&family=Montserrat:wght@500;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Brand Design Tokens + UI Styles -->
+  <link rel="stylesheet" href="css/brand-tokens.css">
+  <link rel="stylesheet" href="css/ui-styles.css">
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
+      }
+    }
+  </script>
+
+  <!-- GSAP Animation Engine -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+</head>
+
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════
+       LOADING OVERLAY
+       ═══════════════════════════════════════════════════════ -->
+  <div id="loading">
+    <!-- Official AMC logo -->
+    <img class="loading-logo loading-logo-official" src="assets/amc-logo.svg" alt="Albertsons Media Collective logo">
+    <div class="loading-spinner"></div>
+    <div id="loading-text">Initializing...</div>
+  </div>
+
+  <div id="idle-attract-cover" class="visible" aria-hidden="false">
+    <div class="idle-cover-emblem-wrap" aria-hidden="true">
+      <img class="idle-cover-emblem" src="assets/amc-mark.svg" alt="">
+    </div>
+
+    <div class="idle-cover-content">
+      <div class="idle-cover-logo" aria-label="Albertsons Media Collective logo" role="img">
+        <span class="idle-cover-logo-wordmark"></span>
+        <img class="idle-cover-logo-mark" src="assets/amc-mark.svg" alt="">
+      </div>
+
+      <div class="idle-cover-copy">
+        <span class="idle-cover-accent" aria-hidden="true"></span>
+        <h1 class="idle-cover-title">Power of Attraction</h1>
+        <p class="idle-cover-subtitle">Step in to see how AMC's data magnetizes your ideal buyer.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       FPS COUNTER
+       ═══════════════════════════════════════════════════════ -->
+  <div id="fps"></div>
+    <div id="perf-hud"></div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       HIDDEN WEBCAM
+       ═══════════════════════════════════════════════════════ -->
+  <video id="webcam" autoplay playsinline></video>
+
+  <!-- ═══════════════════════════════════════════════════════
+       BACKGROUND STATE LAYER (CSS gradient transitions)
+       Three.js canvas is behind this; this adds the phase-
+       dependent color overlays as a semi-transparent layer.
+       ═══════════════════════════════════════════════════════ -->
+  <div id="mock-3d-canvas" style="position:fixed;inset:0;z-index:1;pointer-events:none;opacity:0;background:transparent;"></div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       DATA SCAN TRANSITION OVERLAY
+       ═══════════════════════════════════════════════════════ -->
+  <div id="data-transition-overlay"></div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       UI OVERLAY LAYER
+       ═══════════════════════════════════════════════════════ -->
+  <div id="ui-layer">
+
+    <!-- AMC BRAND HEADER -->
+    <div class="brand-header">
+      <img class="brand-header-logo brand-header-logo-official" src="assets/amc-logo.svg" alt="Albertsons Media Collective logo">
+    </div>
+
+    <!-- SELECTOR UI -->
+    <div id="selector-panel" class="interactive" aria-live="polite">
+      <div id="brands-container">
+        <div class="brand-logo-container" id="logo-a">
+          <button class="brand-logo brand-kraft" data-option="kraft-heinz" type="button">
+            <span class="logo-label logo-label-fallback">Kraft Heinz</span>
+          </button>
+        </div>
+        <div class="brand-logo-container" id="logo-b">
+          <button class="brand-logo brand-mondelez" data-option="mondelez" type="button">
+            <img class="brand-logo-image brand-logo-image-mondelez" src="assets/logos/MDLZ_Logo/MDLZ Logo Reversed RGB.png" alt="Mondelez logo">
+          </button>
+        </div>
+        <div class="brand-logo-container" id="logo-c">
+          <button class="brand-logo brand-coca" data-option="coca-cola" type="button">
+            <img class="brand-logo-image brand-logo-image-coca" src="assets/logos/coca-cola-company-white.svg" alt="Coca-Cola logo">
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN HERO COPY -->
+    <div id="copy-container">
+      <h1 id="main-headline"></h1>
+      <hr class="headline-rule">
+      <p id="sub-headline"></p>
+
+    </div>
+
+    <div id="harmony-qr" aria-hidden="true">
+      <img id="harmony-qr-image" src="assets/amc-results-qr.png" alt="QR code for Albertsons Media Collective results page">
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       DEVELOPER CONTROLS (visible with ?debug in URL)
+       ═══════════════════════════════════════════════════════ -->
+  <div id="dev-controls">
+    <span class="dev-label">Scene:</span>
+    <button class="dev-btn" data-phase="0">0. BOOT</button>
+    <button class="dev-btn" data-phase="1">1. IDLE</button>
+    <button class="dev-btn" data-phase="2">2. CHAOS</button>
+    <button class="dev-btn" data-phase="3">3. GESTURE</button>
+    <button class="dev-btn dev-btn-primary" data-phase="4">4. HARMONY</button>
+    <button class="dev-btn" data-phase="5">5. POSE LOST</button>
+    <button class="dev-btn" data-phase="6">6. ERROR</button>
+    <span class="dev-status" id="dev-current-option">Option: none</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       APPLICATION ENTRY POINT
+       ═══════════════════════════════════════════════════════ -->
+  <script type="module" src="js/main.js"></script>
+
+</body>
+</html>

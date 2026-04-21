@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <base href="/receipt/">
+  <title>Everything Adds Up With AMC</title>
+
+  <meta name="description" content="AMC AR Couch Hunt — Spot the Couch, Snap It, Show It, Get Swag">
+  <meta property="og:title" content="Everything Adds Up With AMC">
+  <meta property="og:description" content="Find the hidden couch in AR and claim your swag!">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/styles.css">
+
+  <!-- ─── 8th Wall Engine (open-source SLAM) ─── -->
+  <!--
+    These scripts come from the 8th Wall open-source packages.
+    Setup:
+      1. Clone https://github.com/8thwall/aframe-world-effects-example
+      2. Copy its external/ folder into this project root
+      OR
+      3. Build from source: https://github.com/8thwall/8thwall
+    SLAM binary: https://8th.io/xrjs
+  -->
+  <script src="external/scripts/8frame-1.5.0.min.js"></script>
+  <script src="external/xrextras/xrextras.js"></script>
+  <script src="external/landing-page/landing-page.js"></script>
+  <script src="external/xr/xr.js" async data-preload-chunks="slam"></script>
+
+  <meta name="8thwall:renderer" content="aframe:1.5.0">
+  <meta name="8thwall:package" content="@8thwall.xrextras">
+  <meta name="8thwall:package" content="@8thwall.landing-page">
+</head>
+
+<body>
+
+  <!-- ─── App Scripts (register components before <a-scene>) ─── -->
+  <script src="js/components/couch-placer.js"></script>
+  <script src="js/components/couch-detector.js"></script>
+  <script src="js/ui/state-manager.js"></script>
+  <script src="js/ui/screen-capture.js"></script>
+  <script src="js/app.js"></script>
+
+  <!-- ─── UI Overlay ─── -->
+  <div id="app-overlay">
+
+    <!-- Header -->
+    <header id="header">
+      <img src="assets/amc-logo.svg" alt="Albertsons Media Collective" id="logo">
+    </header>
+
+    <!-- Title -->
+    <div id="title-block">
+      <p class="eyebrow">AMC COUCH HUNT</p>
+      <h1>Find the <span>couch</span></h1>
+      <p class="subtitle">Snap it. Show it. Get swag.</p>
+    </div>
+
+    <!-- CTA: Searching -->
+    <div id="cta-search" class="cta active">
+      <div class="instruction-card">
+        <div class="instruction-step">
+          <span class="step-badge">1</span>
+          <p>Look up and scan the space</p>
+        </div>
+        <div class="instruction-step">
+          <span class="step-badge">2</span>
+          <p>Find the floating couch</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- CTA: Found → Snap -->
+    <div id="cta-found" class="cta">
+      <button id="btn-snap">TAKE PHOTO</button>
+    </div>
+
+    <!-- Found target indicator -->
+    <div id="found-indicator"></div>
+
+    <!-- Flash effect -->
+    <div id="flash"></div>
+
+    <!-- Capture Card -->
+    <div id="capture-card">
+      <img src="assets/amc-logo.svg" alt="AMC" class="card-logo">
+      <img id="captured-photo" alt="Your AR capture">
+      <h2>You won!</h2>
+      <p class="card-subtitle">Show this photo at the AMC booth to claim your swag.</p>
+      <button id="btn-claim">CLAIM YOUR SWAG</button>
+    </div>
+
+    <!-- Progress Steps -->
+    <nav id="progress">
+      <div class="step active" data-step="spot">
+        <div class="dot"></div>
+        <label>Spot</label>
+      </div>
+      <div class="line"></div>
+      <div class="step" data-step="snap">
+        <div class="dot"></div>
+        <label>Snap</label>
+      </div>
+      <div class="line"></div>
+      <div class="step" data-step="show">
+        <div class="dot"></div>
+        <label>Show</label>
+      </div>
+      <div class="line"></div>
+      <div class="step" data-step="swag">
+        <div class="dot"></div>
+        <label>Swag</label>
+      </div>
+    </nav>
+  </div>
+
+  <!-- ─── A-Frame AR Scene ─── -->
+  <a-scene
+    couch-detector
+    landing-page
+    xrextras-loading
+    xrextras-runtime-error
+    renderer="colorManagement: true; preserveDrawingBuffer: true; physicallyCorrectLights: true"
+    xrweb="allowedDevices: any;">
+
+    <!-- Assets -->
+    <a-assets>
+      <!--
+        Place your couch.glb model in the assets/ folder.
+        Recommended: optimised GLB, < 2 MB, centered origin.
+      -->
+      <a-asset-item id="couchModel" src="assets/couch.glb"></a-asset-item>
+    </a-assets>
+
+    <!-- Camera -->
+    <a-camera
+      id="camera"
+      position="0 1.6 0">
+    </a-camera>
+
+    <!-- Couch (placed dynamically by couch-placer) -->
+    <a-entity
+      id="couch"
+      couch-placer
+      gltf-model="#couchModel"
+      shadow="cast: true; receive: true"
+      visible="false">
+    </a-entity>
+
+    <!-- Lighting -->
+    <a-entity
+      light="type: directional; intensity: 0.8; castShadow: true"
+      xrextras-attach="target: camera; offset: 8 15 4"
+      position="1 4.3 2.5">
+    </a-entity>
+
+    <a-light type="ambient" intensity="0.5"></a-light>
+
+  </a-scene>
+
+</body>
+</html>

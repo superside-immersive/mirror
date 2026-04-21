@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/portal",
+      "destination": "/portal/index.html"
+    },
+    {
+      "source": "/mirror",
+      "destination": "/mirror/index.html"
+    },
+    {
+      "source": "/receipt",
+      "destination": "/receipt/index.html"
+    }
+  ]
+}

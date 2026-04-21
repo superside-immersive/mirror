@@ -1,93 +1,140 @@
 # amcatpossible
 
+Unified repo for three AMC web experiences deployed from a single Vercel project.
 
+## Routes
 
-## Getting started
+- `/portal` — portal experience sourced from the former `image` project, now organized under `portal/`
+- `/mirror` — original root mirror experience, now organized under `mirror/`
+- `/receipt` — receipt experience sourced from the former `receiptar` project, now organized under `receipt/`
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+## Repository structure
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
-
-```
-cd existing_repo
-git remote add origin https://gitlab.com/superside/immersive/amcatpossible.git
-git branch -M main
-git push -uf origin main
+```text
+portal/   Portal experience plus its source/build files
+mirror/   Original mirror experience moved out of the repo root
+receipt/  Receipt AR experience
 ```
 
-## Integrate with your tools
+## Local preview
 
-* [Set up project integrations](https://gitlab.com/superside/immersive/amcatpossible/-/settings/integrations)
+```bash
+python3 -m http.server 8080
+```
 
-## Collaborate with your team
+Then open:
 
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+- `http://localhost:8080/portal/`
+- `http://localhost:8080/mirror/`
+- `http://localhost:8080/receipt/`
 
-## Test and Deploy
+## Vercel
 
-Use the built-in continuous integration in GitLab.
+`vercel.json` rewrites the slashless routes to the right `index.html` files so these URLs resolve:
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
+- `https://amcatpossible.superside.dev/portal`
+- `https://amcatpossible.superside.dev/mirror`
+- `https://amcatpossible.superside.dev/receipt`# Interactive Mirror: Shelf-Aware
 
-***
+> A playful full-body mirror screen that transforms you into your best shelf.
 
-# Editing this README
+## The Experience
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+### Where Decisions Happen
 
-## Suggestions for a good README
+Visitors step into a store environment where brands compete for attention at the **moment of purchase**. The installation recreates a supermarket aisle — complete with gondola shelves stocked with products on both sides — and places the visitor right in the middle of it.
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+### Mirror Avatar
 
-## Name
-Choose a self-explaining name for your project.
+Using **full-body pose tracking** (MediaPipe), the screen builds a live "mirror-self" avatar made of instanced supermarket products driven by physics proxies. The **webcam feed stays visible as the background**, and products only fly into frame once a person is detected, assembling into a real-time silhouette of the body — head, torso, arms, legs — rendered in 3D.
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+The branded version currently supports three selectable hero products: **Heinz Mustard**, **Oreo Cookie**, and **Coca-Cola Classic Bottle**. Each one is loaded from its own GLB and rendered with its **native textures and materials**, while preserving the same pose-driven body formation system.
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+### Physical Interaction
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+Products behave with **real physics** — bobbing, colliding, and scattering as users move. The figure is never static: cubes gently wobble and rotate organically, giving the avatar a living, breathing quality. When the visitor steps away, products fly back **out of frame** in satisfying flock-like arcs instead of resting on visible shelves.
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+### Playful Discovery
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+Gestures and movement trigger phase transitions and reassembly, encouraging quick experimentation and repeat plays. Hand-raise interactions move the experience into the gesture phase, and brand selection is currently finalized through **mouse/tap clicks** on the on-screen selector cards. The physicality of the interaction — seeing yourself made of products that react to your every move — reinforces the emotional connection at the moment where **in-store influence drives final decisions**.
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+---
+
+## Technical Stack
+
+| Layer | Technology | Role |
+|-------|-----------|------|
+| 3D Rendering | Three.js v0.170.0 | Scene, PBR materials, environment lighting, shadows |
+| Pose Detection | MediaPipe Tasks Vision v0.10.18 | Real-time 33-landmark body tracking via webcam |
+| Physics | cannon-es v0.20.0 | Collision resolution, velocity-driven movement |
+| Delivery | 100% CDN | Zero installs — runs in any modern browser |
+
+## Architecture
+
+```
+index.html          App shell + UI overlay (loading, selector, copy, debug controls)
+js/main.js          Entry point and startup orchestration
+js/appState.js      Central app state for phase, selection, and runtime errors
+js/config.js        Single source of truth for tuning constants
+js/scene.js         Three.js setup, environment map, shelf visuals, resize handling
+js/physics.js       cannon-es world and proxy bodies
+js/mediapipe.js     Webcam + PoseLandmarker initialization and per-frame detection
+js/bodyTargets.js   Landmark smoothing and body target generation
+js/cubeData.js      Active/static shelf population + shelf home targets
+js/productCatalog.js Loads per-product GLBs or a shared catalog and normalizes bounds
+js/productOptions.js Branded option definitions (Kraft Heinz / Mondelez / Coca-Cola)
+js/productRenderer.js Instanced rendering pipeline for active + static products
+js/gestureDetector.js Phase state machine and gesture logic
+js/uiPhases.js      Phase-driven UX copy/overlay/animation triggers
+js/signatures/*     Signature motion layers for stack / calibration / fizz
+js/animationLoop.js Main frame loop: detect → phase → drive → simulate → render
+```
+
+## Key Design Decisions
+
+- **No gravity** — Products are driven by direct velocity targeting toward body landmarks, not gravitational forces. This gives precise, responsive formation without floaty lag.
+- **Flock return** — When the pose is lost, cubes don't just lerp back. They swoop in arcs with sinusoidal oscillation (per-cube phase offsets) before settling upright on their shelf positions.
+- **Organic wobble** — Cubes forming the body are never still. Gentle sin-wave angular velocities with unique phase per cube create a morphing, alive feel.
+- **Ordered shelves** — Products sit axis-aligned on shelves, packed side by side with proper y-offset (half-height above plank surface). No random jitter while resting.
+- **Environment lighting** — Scene is lit primarily through an environment map (bright sky dome + fluorescent ceiling strips + floor bounce) and hemisphere light, not point lights. This produces natural ambient occlusion and soft, realistic shading.
+
+## Configuration Points
+
+| Parameter | Current Value | Description |
+|-----------|--------------|-------------|
+| `PRODUCT_TYPES` | 8 types | Array of `{w, h, d}` — add/change product shapes here |
+| `SHELF_EXTRA` | 120 | Number of active shelf-return items |
+| `STATIC_SHELF_ITEMS` | 200 | Decorative static shelf fill items |
+| `NUM_SHELVES` | 6 | Shelf rows per side |
+| `SHELF_LENGTH` | 8 | Z-extent of each gondola |
+| `SHELF_X` | 3.2 | Distance from center to shelf walls |
+| `STIFFNESS` / `MAX_SPEED` | 3 / 4 | How fast cubes seek their target |
+| `SEGMENTS` | 13 entries | Body part definitions (cube count, thickness, size multiplier) |
+| Product options | `kraft-heinz` / `mondelez` / `coca-cola` | Branded selector options for active items |
+| Shelf color | `AMC_COLORS.blue` / `AMC_COLORS.navy` | Gondola plank and panel colors |
+| Hero assets | `./assets/glb/mustard.glb`, `./assets/glb/oreo.glb`, `./assets/glb/cocacola.glb` | Source GLBs used for branded body formation |
+
+## Running Locally
+
+```bash
+cd mirror
+python3 -m http.server 8080
+# Open http://localhost:8080
+```
+
+Requires a webcam and a modern browser with WebGL2 support.
+
+---
 
 ## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+- [ ] Configurable product textures / brand logos on cubes
+- [ ] Gesture-triggered scatter bursts (wave, clap detection)
+- [x] Category-aware product distribution from GLB variant names
+- [x] Branded 3-option selector with click/tap selection
+- [x] Per-brand harmony signatures (stack / calibration / fizz), v1
+- [ ] Gesture-based dwell selection
+- [ ] Explicit runtime category mode switching (beverages, snacks, cleaning, etc.)
+- [ ] Sound design — satisfying swoosh/click sounds on formation and scatter
+- [ ] Multi-person support
+- [ ] Analytics overlay — heatmap of which body parts attract most attention

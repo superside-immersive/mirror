@@ -1,0 +1,566 @@
+/* ================================================
+   AMC Couch Hunt — AR Experience
+   Albertsons Media Collective
+   Brand: Navy #032644 · Blue #028FFF
+   ================================================ */
+
+:root {
+  --navy: #032644;
+  --blue: #028FFF;
+  --white: #FFFFFF;
+  --navy-90: rgba(3, 38, 68, 0.92);
+  --navy-60: rgba(3, 38, 68, 0.6);
+  --navy-30: rgba(3, 38, 68, 0.3);
+  --blue-glow: rgba(2, 143, 255, 0.4);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  background: #000;
+}
+
+/* ---- Overlay Container ---- */
+
+#app-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: env(safe-area-inset-top, 20px) 0 env(safe-area-inset-bottom, 20px);
+}
+
+/* ---- Header ---- */
+
+#header {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding: 22px 0 8px;
+  opacity: 0;
+  transform: translateY(-10px);
+  animation: slideDown 0.6s ease 1s forwards;
+}
+
+#logo {
+  height: 46px;
+  width: auto;
+  filter: brightness(0) invert(1);
+}
+
+/* ---- Title ---- */
+
+#title-block {
+  color: var(--white);
+  text-align: center;
+  opacity: 0;
+  transform: translateY(10px);
+  animation: slideUp 0.6s ease 1.2s forwards;
+  transition: opacity 0.4s ease;
+  width: min(calc(100vw - 40px), 400px);
+  margin: 0 auto;
+  padding: 0;
+}
+
+#title-block .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 12px;
+  margin-bottom: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(3, 38, 68, 0.62);
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+}
+
+#title-block h1 {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.8px;
+  line-height: 1.05;
+  text-transform: uppercase;
+  text-shadow: 0 2px 20px var(--navy-60);
+}
+
+#title-block h1 span {
+  color: var(--blue);
+}
+
+#title-block .subtitle {
+  margin-top: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: rgba(255, 255, 255, 0.88);
+  text-shadow: 0 1px 8px var(--navy-60);
+}
+
+/* ---- CTA States ---- */
+
+.cta {
+  position: absolute;
+  bottom: 112px;
+  left: 0;
+  right: 0;
+  width: min(calc(100vw - 40px), 400px);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  pointer-events: none;
+}
+
+.cta.active {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.cta p {
+  color: var(--white);
+  font-size: 16px;
+  font-weight: 700;
+  text-shadow: 0 1px 10px var(--navy-90);
+  letter-spacing: 0.1px;
+  line-height: 1.35;
+}
+
+.instruction-card {
+  width: 100%;
+  margin: 0 auto;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(3, 38, 68, 0.9), rgba(3, 38, 68, 0.74));
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.instruction-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+
+.instruction-step + .instruction-step {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.step-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: var(--white);
+  font-size: 13px;
+  font-weight: 800;
+  box-shadow: 0 0 16px var(--blue-glow);
+}
+
+.instruction-step p {
+  font-size: 16px;
+}
+
+.found-copy {
+  width: 100%;
+  margin: 0;
+  padding: 14px 18px;
+  border-radius: 18px;
+  background: rgba(3, 38, 68, 0.84);
+  border: 1px solid rgba(2, 143, 255, 0.28);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.24);
+}
+
+/* ---- Snap Button ---- */
+
+#btn-snap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--blue);
+  color: var(--white);
+  border: none;
+  border-radius: 50px;
+  width: 100%;
+  max-width: 320px;
+  padding: 18px 40px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  cursor: pointer;
+  pointer-events: auto;
+  animation: pulse 2s ease-in-out infinite;
+  box-shadow: 0 4px 24px var(--blue-glow);
+  -webkit-tap-highlight-color: transparent;
+}
+
+#btn-snap::before {
+  content: '📸';
+  font-size: 18px;
+}
+
+#btn-snap:disabled {
+  opacity: 0.72;
+  cursor: default;
+  animation: none;
+  box-shadow: 0 2px 12px rgba(2, 143, 255, 0.18);
+}
+
+/* ---- Found Indicator ---- */
+
+#found-indicator {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90px;
+  height: 90px;
+  border: 2px solid var(--blue);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 15;
+  transition: opacity 0.3s ease;
+}
+
+#found-indicator.active {
+  opacity: 1;
+  animation: targetLock 1.2s ease-in-out infinite;
+}
+
+#found-indicator::before,
+#found-indicator::after {
+  content: '';
+  position: absolute;
+  background: var(--blue);
+}
+
+#found-indicator::before {
+  width: 2px;
+  height: 18px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+#found-indicator::after {
+  width: 18px;
+  height: 2px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* ---- Capture Card ---- */
+
+#capture-card {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--navy-90);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+  padding: 40px 24px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+#capture-card.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#capture-card .card-logo {
+  height: 38px;
+  margin-bottom: 24px;
+  filter: brightness(0) invert(1);
+}
+
+#captured-photo {
+  width: 100%;
+  max-width: 300px;
+  border-radius: 12px;
+  border: 2px solid var(--blue);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+  margin-bottom: 28px;
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 0.5s ease 0.2s, transform 0.5s ease 0.2s;
+}
+
+#capture-card.active #captured-photo {
+  opacity: 1;
+  transform: scale(1);
+}
+
+#capture-card h2 {
+  color: var(--white);
+  font-size: 28px;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
+#capture-card .card-subtitle {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.35;
+  margin-bottom: 28px;
+  text-align: center;
+  max-width: 320px;
+}
+
+#btn-claim {
+  background: var(--blue);
+  color: var(--white);
+  border: none;
+  border-radius: 50px;
+  padding: 15px 44px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  box-shadow: 0 4px 24px var(--blue-glow);
+  transition: transform 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#btn-claim:active {
+  transform: scale(0.96);
+}
+
+/* ---- Flash Effect ---- */
+
+#flash {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: white;
+  z-index: 30;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#flash.active {
+  animation: flashEffect 0.4s ease-out forwards;
+}
+
+/* ---- Progress Bar ---- */
+
+#progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0 20px 12px;
+  opacity: 0;
+  animation: fadeIn 0.6s ease 1.5s forwards;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 44px;
+}
+
+.step .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  background: transparent;
+  transition: all 0.5s ease;
+  position: relative;
+}
+
+.step.active .dot {
+  border-color: var(--blue);
+  background: var(--blue);
+  box-shadow: 0 0 12px var(--blue-glow);
+}
+
+.step.completed .dot {
+  border-color: var(--blue);
+  background: var(--blue);
+}
+
+.step.completed .dot::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--white);
+  font-size: 7px;
+  font-weight: 800;
+}
+
+.step label {
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  transition: color 0.4s ease;
+}
+
+.step.active label,
+.step.completed label {
+  color: var(--white);
+}
+
+.line {
+  width: 24px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  margin-bottom: 18px;
+  position: relative;
+  overflow: hidden;
+}
+
+.line.filled::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  background: var(--blue);
+  transform: scaleX(0);
+  transform-origin: left;
+  animation: fillLine 0.5s ease forwards;
+}
+
+/* ---- Animations ---- */
+
+@keyframes slideDown {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 4px 24px var(--blue-glow);
+  }
+  50% {
+    transform: scale(1.04);
+    box-shadow: 0 6px 32px rgba(2, 143, 255, 0.55);
+  }
+}
+
+@keyframes flashEffect {
+  0% { opacity: 0.85; }
+  100% { opacity: 0; }
+}
+
+@keyframes fillLine {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes targetLock {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.15);
+    opacity: 0.4;
+  }
+}
+
+/* ---- Responsive ---- */
+
+@media (max-height: 600px) {
+  #logo {
+    height: 38px;
+  }
+
+  #title-block .eyebrow {
+    margin-bottom: 8px;
+  }
+
+  #title-block h1 {
+    font-size: 28px;
+  }
+
+  .cta {
+    bottom: 80px;
+  }
+
+  .instruction-card,
+  .found-copy {
+    width: 100%;
+  }
+
+  .instruction-step p,
+  .cta p {
+    font-size: 15px;
+  }
+
+  #capture-card {
+    padding: 24px 20px;
+  }
+}

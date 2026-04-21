@@ -1,0 +1,114 @@
+<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><base href="/portal/"><title>Portal Tracker · A-Frame + 8th Wall</title><meta itemprop="name" content="Portal Tracker"><meta name="twitter:title" content="Portal Tracker · A-Frame + 8th Wall"><meta property="og:title" content="Portal Tracker · A-Frame + 8th Wall"><meta property="og:site_name" content="Portal Tracker"><meta name="description" content="Portal por image target con A-Frame, preview desktop navegable e inspector habilitado."><meta itemprop="description" content="Portal por image target con A-Frame, preview desktop navegable e inspector habilitado."><meta property="og:description" content="Portal por image target con A-Frame, preview desktop navegable e inspector habilitado."><meta name="twitter:description" content="Portal por image target con A-Frame, preview desktop navegable e inspector habilitado."><script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script><script crossorigin="anonymous" src="./external/runtime/runtime.js"></script><script crossorigin="anonymous" src="./external/xr/xr.js" async="true" data-preload-chunks="slam"></script><style>:root {
+      color-scheme: dark;
+      --panel-bg: rgba(6, 10, 22, 0.72);
+      --panel-border: rgba(167, 196, 255, 0.22);
+      --text: #eef3ff;
+      --muted: #bbcaef;
+      --accent: #8ab4ff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #05070f;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      position: relative;
+    }
+
+    .hud {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      z-index: 20;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      pointer-events: none;
+    }
+
+    .panel {
+      max-width: min(420px, calc(100vw - 32px));
+      padding: 14px 16px;
+      border: 1px solid var(--panel-border);
+      border-radius: 18px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+      pointer-events: auto;
+    }
+
+    .panel h1 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+      line-height: 1.2;
+      color: var(--text);
+    }
+
+    .panel p,
+    .panel li,
+    .panel span {
+      margin: 0;
+      font-size: 0.9rem;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+
+    .panel ul {
+      margin: 10px 0 0;
+      padding-left: 1.15rem;
+    }
+
+    .status {
+      margin-top: 10px;
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .target-card {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      max-width: 280px;
+    }
+
+    .target-card img {
+      width: 64px;
+      height: 64px;
+      object-fit: cover;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .target-card strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--text);
+      font-size: 0.92rem;
+    }
+
+    .hint {
+      color: var(--accent);
+    }
+
+    @media (max-width: 900px) {
+      .hud {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .target-card {
+        max-width: min(420px, calc(100vw - 32px));
+      }
+    }</style></head><body><div class="hud" style="display:none"><div class="panel"><h1>Portal Tracker</h1><p>Experiencia principal migrada a <strong>A-Frame</strong> con portal anclado al image target configurado.</p><ul><li>Mobile: apuntá la cámara al target para fijar el portal.</li><li>Desktop: abrí la escena como preview 3D navegable.</li><li class="hint">Inspector A-Frame: <strong>ctrl + alt + i</strong></li></ul><p id="status" class="status">Inicializando runtime XR…</p><p id="compatibility"></p></div><div class="panel target-card"><img src="./image-targets/download-1773332030950-2-2_thumbnail.png" alt="Target activo"><div><strong>Image target activo</strong> <span>Usá la imagen de referencia cargada para disparar el portal. En desktop queda visible como preview para inspección.</span></div></div></div><a-scene renderer="antialias: false; colorManagement: true; physicallyCorrectLights: false; precision: mediump" xrweb="allowedDevices: any; disableWorldTracking: true; disableDefaultEnvironment: true; delayRun: true" gltf-model="dracoDecoderPath: ./external/runtime/resources/draco/; basisTranscoderPath: ./external/runtime/resources/basis/" loading-screen="enabled: false" background="color: #05070f"><a-assets timeout="20000"><a-asset-item id="cityModel" src="./assets/city-light-blend.glb"></a-asset-item><img id="imageTargetReference" data-src="./image-targets/download-1773332030950-2-2_original.png" alt="Image target reference"> <img id="skyTexture" src="./assets/common/clear_sky.jpg"></a-assets><a-camera id="camera" position="0 0.3 1.5" rotation="0 0 0"></a-camera><a-entity id="target-anchor" image-target-anchor="name: download-1773332030950-2-2" position="0 0 0" rotation="0 0 0" scale="1 1 1"><a-entity id="target-reference" visible="false"><a-plane id="target-reference-image" width="1" height="1.3325991189" position="0 0 -0.025" material="src: #imageTargetReference; transparent: true; opacity: 0.58; side: double; shader: flat"></a-plane><a-box id="target-reference-top" width="1.06" height="0.025" depth="0.012" position="0 0.6787995595 -0.02" color="#8ab4ff"></a-box><a-box id="target-reference-bottom" width="1.06" height="0.025" depth="0.012" position="0 -0.6787995595 -0.02" color="#8ab4ff"></a-box><a-box id="target-reference-left" width="0.025" height="1.3825991189" depth="0.012" position="-0.5175 0 -0.02" color="#8ab4ff"></a-box><a-box id="target-reference-right" width="0.025" height="1.3825991189" depth="0.012" position="0.5175 0 -0.02" color="#8ab4ff"></a-box></a-entity><a-entity id="portal-root" position="0 0 0" rotation="0 0 0" scale="0.76 0.76 0.76" portal="width: 1; height: 1.3325991189"><a-entity id="portal-frame"><a-box id="portal-frame-left" depth="0.04" height="1.3541666667" width="0.01" position="-0.505 0 0.01" color="#6c7fb0"></a-box><a-box id="portal-frame-right" depth="0.04" height="1.3541666667" width="0.01" position="0.505 0 0.01" color="#6c7fb0"></a-box><a-box id="portal-frame-top" depth="0.04" height="0.01" width="1.02" position="0 0.6713 0.01" color="#6c7fb0"></a-box><a-box id="portal-frame-bottom" depth="0.04" height="0.01" width="1.02" position="0 -0.6713 0.01" color="#44506c"></a-box></a-entity><a-entity id="hider-walls" data-hider-walls><a-plane width="28" height="13.33292" position="0 7.33354 0.005" depth-mask></a-plane><a-plane width="28" height="13.33292" position="0 -7.33354 0.005" depth-mask></a-plane><a-plane width="13.5" height="1.3325991189" position="-7.25 0 0.005" depth-mask></a-plane><a-plane width="13.5" height="1.3325991189" position="7.25 0 0.005" depth-mask></a-plane><a-plane width="28" height="28" position="0 0 -26" depth-mask></a-plane><a-plane width="26" height="28" position="-14 0 -13" rotation="0 90 0" depth-mask></a-plane><a-plane width="26" height="28" position="14 0 -13" rotation="0 -90 0" depth-mask></a-plane><a-plane width="28" height="26" position="0 14 -13" rotation="90 0 0" depth-mask></a-plane><a-plane width="28" height="26" position="0 -14 -13" rotation="-90 0 0" depth-mask></a-plane></a-entity><a-entity id="portal-contents" data-portal-contents><a-sphere id="portal-sky" radius="12" segments-width="32" segments-height="16" position="0 0 -13" material="shader: flat; side: back; src: #skyTexture; color: #fff"></a-sphere><a-circle id="portal-floor" radius="4" rotation="-90 0 0" position="0 -1.08 -5" material="color: #223150; opacity: 0.92"></a-circle><a-entity id="portal-city" gltf-model="#cityModel" gltf-loop-animation unlit-model position="0 -0.93 0" rotation="0 270 0" scale="0.12 0.12 0.12"></a-entity><a-sphere id="portal-orb" radius="0.12" position="0 0.6135 -1.2" material="shader: flat; color: #8ab4ff; emissive: #8ab4ff; emissiveIntensity: 1.2" bob="distance: 0.08; duration: 1200"></a-sphere></a-entity></a-entity><a-entity id="narrative-layer" narrative-sequence></a-entity></a-entity></a-scene><script src="bundle.js"></script></body></html>
