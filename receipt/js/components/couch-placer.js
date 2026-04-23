@@ -213,23 +213,34 @@
     tick: function () {
       if (!this.revealed) return
 
-      // Billboard: rotate Y so the couch always faces the camera
-      var camera = this.el.sceneEl.camera
-      if (!camera) return
-      camera.getWorldPosition(this._cameraWorldPos)
+      try {
+        // Billboard: rotate Y so the couch always faces the camera.
+        // We use euler + setFromEuler to avoid touching quaternion internals
+        // that 8th Wall SLAM expects to own on the camera object.
+        var camera = this.el.sceneEl.camera
+        if (!camera) return
 
-      var myPos = this.el.object3D.position
-      var dx = this._cameraWorldPos.x - myPos.x
-      var dz = this._cameraWorldPos.z - myPos.z
-      var lookY = Math.atan2(dx, dz)
+        camera.getWorldPosition(this._cameraWorldPos)
 
-      // Apply rotation offsets from dev sliders
-      var off = (window.AMC && window.AMC.couchRotOffset) || { x: 0, y: 0, z: 0 }
-      this.el.object3D.rotation.set(
-        THREE.MathUtils.degToRad(off.x),
-        lookY + THREE.MathUtils.degToRad(off.y),
-        THREE.MathUtils.degToRad(off.z)
-      )
+        var myPos = this.el.object3D.getWorldPosition(new THREE.Vector3())
+        var dx = this._cameraWorldPos.x - myPos.x
+        var dz = this._cameraWorldPos.z - myPos.z
+        var lookY = Math.atan2(dx, dz)
+
+        // Apply rotation offsets from dev sliders
+        var off = (window.AMC && window.AMC.couchRotOffset) || { x: 0, y: 0, z: 0 }
+
+        // Set euler on the object3D — safe because this is the couch entity,
+        // not the camera; 8th Wall only drives the camera world transform.
+        this.el.object3D.rotation.set(
+          THREE.MathUtils.degToRad(off.x),
+          lookY + THREE.MathUtils.degToRad(off.y),
+          THREE.MathUtils.degToRad(off.z),
+          'YXZ'
+        )
+      } catch (e) {
+        // Swallow errors silently — XR init race conditions
+      }
     },
   }
 

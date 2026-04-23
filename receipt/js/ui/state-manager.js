@@ -28,10 +28,20 @@
         lines: document.querySelectorAll('#progress .line'),
       }
 
+      // Start hidden and only reveal CTA once camera permission/session is ready.
+      this.cameraReady = false
+      this.els.ctaSearch.classList.remove('active')
+      this.els.titleBlock.style.opacity = '0'
+
       this.setState(STATES.SEARCHING)
 
       window.addEventListener('couch-found', this.onCouchFound.bind(this))
       window.addEventListener('photo-captured', this.onPhotoCaptured.bind(this))
+
+      var scene = document.querySelector('a-scene')
+      if (scene) {
+        scene.addEventListener('camerastatuschange', this.onCameraStatusChange.bind(this))
+      }
     },
 
     setState: function (state) {
@@ -58,8 +68,8 @@
 
     showSearching: function () {
       this.els.titleBlock.style.display = 'block'
-      this.els.titleBlock.style.opacity = '1'
-      this.els.ctaSearch.classList.add('active')
+      this.els.titleBlock.style.opacity = this.cameraReady ? '1' : '0'
+      if (this.cameraReady) this.els.ctaSearch.classList.add('active')
       this.els.ctaFound.classList.remove('active')
       this.els.captureCard.classList.remove('active')
       this.els.foundIndicator.classList.remove('active')
@@ -114,7 +124,21 @@
     /* ---- Event handlers ---- */
 
     onCouchFound: function () {
+      if (!this.cameraReady) return
       this.setState(STATES.FOUND)
+    },
+
+    onCameraStatusChange: function (e) {
+      var status = e && e.detail && e.detail.status
+      if (!status || this.cameraReady) return
+
+      if (status === 'hasStream' || status === 'hasVideo' || status === 'hasDesktop3D') {
+        this.cameraReady = true
+        if (this.current === STATES.SEARCHING) {
+          this.els.ctaSearch.classList.add('active')
+          this.els.titleBlock.style.opacity = '1'
+        }
+      }
     },
 
     onPhotoCaptured: function (e) {
