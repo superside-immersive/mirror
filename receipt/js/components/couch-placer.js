@@ -32,6 +32,22 @@
       this.placed = false
       this.revealed = false
       this.baseScale = new THREE.Vector3(1, 1, 1)
+      this._cameraWorldPos = new THREE.Vector3() // pre-alloc for tick
+
+      // Enable soft shadow maps once the renderer is ready
+      var sceneEl = this.el.sceneEl
+      var setupShadows = function () {
+        var renderer = sceneEl.renderer
+        if (renderer) {
+          renderer.shadowMap.enabled = true
+          renderer.shadowMap.type = THREE.PCFSoftShadowMap
+        }
+      }
+      if (sceneEl.renderer) {
+        setupShadows()
+      } else {
+        sceneEl.addEventListener('renderstart', setupShadows)
+      }
 
       this.el.addEventListener('model-loaded', this.onModelLoaded.bind(this))
 
@@ -69,15 +85,7 @@
         loop: true,
       })
 
-      // Gentle rotation
-      this.el.setAttribute('animation__rotate', {
-        property: 'rotation',
-        from: '0 0 0',
-        to: '0 360 0',
-        dur: ROTATE_DURATION,
-        easing: 'linear',
-        loop: true,
-      })
+      // (no auto-rotation — tick() handles look-at-camera instead)
 
       // Hide until the model is loaded and normalized to real-world couch scale.
       this.el.object3D.scale.set(0.001, 0.001, 0.001)
@@ -200,6 +208,28 @@
 
       this.el.removeAttribute('animation__highlight')
       this.el.object3D.scale.copy(this.baseScale)
+    },
+
+    tick: function () {
+      if (!this.revealed) return
+
+      // Billboard: rotate Y so the couch always faces the camera
+      var camera = this.el.sceneEl.camera
+      if (!camera) return
+      camera.getWorldPosition(this._cameraWorldPos)
+
+      var myPos = this.el.object3D.position
+      var dx = this._cameraWorldPos.x - myPos.x
+      var dz = this._cameraWorldPos.z - myPos.z
+      var lookY = Math.atan2(dx, dz)
+
+      // Apply rotation offsets from dev sliders
+      var off = (window.AMC && window.AMC.couchRotOffset) || { x: 0, y: 0, z: 0 }
+      this.el.object3D.rotation.set(
+        THREE.MathUtils.degToRad(off.x),
+        lookY + THREE.MathUtils.degToRad(off.y),
+        THREE.MathUtils.degToRad(off.z)
+      )
     },
   }
 

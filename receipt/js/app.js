@@ -10,6 +10,24 @@
   AFRAME.registerComponent('couch-placer', AMC.couchPlacerComponent)
   AFRAME.registerComponent('couch-detector', AMC.couchDetectorComponent)
 
+  // Shadow-only floor: transparent plane that only shows cast shadows in AR passthrough
+  AFRAME.registerComponent('shadow-floor', {
+    init: function () {
+      var apply = function (mesh) {
+        mesh.material = new THREE.ShadowMaterial({ opacity: 0.45, transparent: true })
+        mesh.receiveShadow = true
+      }
+      var mesh = this.el.getObject3D('mesh')
+      if (mesh) {
+        apply(mesh)
+      } else {
+        this.el.addEventListener('object3dset', function (e) {
+          if (e.detail.type === 'mesh') apply(e.detail.object)
+        })
+      }
+    },
+  })
+
   // Initialise UI when DOM is ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot)

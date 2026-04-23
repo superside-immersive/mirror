@@ -126,7 +126,7 @@
     landing-page
     xrextras-loading
     xrextras-runtime-error
-    renderer="colorManagement: true; preserveDrawingBuffer: true; physicallyCorrectLights: true"
+    renderer="colorManagement: true; preserveDrawingBuffer: true; physicallyCorrectLights: true; shadowMapEnabled: true; shadowMapType: pcfsoft"
     xrweb="allowedDevices: any;">
 
     <!-- Assets -->
@@ -135,7 +135,7 @@
         Place your couch.glb model in the assets/ folder.
         Recommended: optimised GLB, < 2 MB, centered origin.
       -->
-      <a-asset-item id="couchModel" src="assets/couch.glb"></a-asset-item>
+      <a-asset-item id="couchModel" src="assets/couch2.glb"></a-asset-item>
     </a-assets>
 
     <!-- Camera -->
@@ -143,6 +143,15 @@
       id="camera"
       position="0 1.6 0">
     </a-camera>
+
+    <!-- Shadow-only floor plane (AR passthrough — only shadow is visible) -->
+    <a-plane
+      shadow-floor
+      rotation="-90 0 0"
+      width="30"
+      height="30"
+      position="0 0 0">
+    </a-plane>
 
     <!-- Couch (placed dynamically by couch-placer) -->
     <a-entity
@@ -155,14 +164,51 @@
 
     <!-- Lighting -->
     <a-entity
-      light="type: directional; intensity: 0.8; castShadow: true"
-      xrextras-attach="target: camera; offset: 8 15 4"
+      light="type: directional; intensity: 1.1; castShadow: true; shadowCameraLeft: -12; shadowCameraRight: 12; shadowCameraTop: 12; shadowCameraBottom: -12; shadowCameraFar: 30; shadowMapWidth: 2048; shadowMapHeight: 2048; shadowBias: -0.001"
+      xrextras-attach="target: camera; offset: 5 12 3"
       position="1 4.3 2.5">
     </a-entity>
 
-    <a-light type="ambient" intensity="0.5"></a-light>
+    <a-light type="ambient" intensity="0.45"></a-light>
 
   </a-scene>
+
+  <!-- ─── Dev: Rotation offset panel ─── -->
+  <div id="dev-rot-panel" style="
+      position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+      z-index: 9999; background: rgba(0,0,0,0.72); color: #fff;
+      padding: 12px 16px; border-radius: 14px; min-width: 270px;
+      font-family: monospace; font-size: 12px; pointer-events: auto;
+      backdrop-filter: blur(6px); box-shadow: 0 4px 20px rgba(0,0,0,0.4);">
+    <div style="text-align:center; letter-spacing:2px; margin-bottom:10px; font-size:11px; opacity:.7;">ROTATION OFFSET</div>
+    <label style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+      <span style="width:10px">X</span>
+      <input type="range" id="rot-x" min="-180" max="180" value="0" style="flex:1; accent-color:#028FFF;">
+      <span id="rot-x-val" style="width:36px; text-align:right;">0°</span>
+    </label>
+    <label style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+      <span style="width:10px">Y</span>
+      <input type="range" id="rot-y" min="-180" max="180" value="0" style="flex:1; accent-color:#028FFF;">
+      <span id="rot-y-val" style="width:36px; text-align:right;">0°</span>
+    </label>
+    <label style="display:flex; align-items:center; gap:8px;">
+      <span style="width:10px">Z</span>
+      <input type="range" id="rot-z" min="-180" max="180" value="0" style="flex:1; accent-color:#028FFF;">
+      <span id="rot-z-val" style="width:36px; text-align:right;">0°</span>
+    </label>
+  </div>
+  <script>
+    window.AMC = window.AMC || {};
+    window.AMC.couchRotOffset = { x: 0, y: 0, z: 0 };
+    ['x', 'y', 'z'].forEach(function (axis) {
+      var slider = document.getElementById('rot-' + axis);
+      var label  = document.getElementById('rot-' + axis + '-val');
+      slider.addEventListener('input', function () {
+        window.AMC.couchRotOffset[axis] = parseFloat(this.value);
+        label.textContent = this.value + '\u00b0';
+      });
+    });
+  </script>
 
 </body>
 </html>
