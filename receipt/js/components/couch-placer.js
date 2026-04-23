@@ -6,9 +6,6 @@
 (function () {
   'use strict'
 
-  var FLOAT_RANGE = 0.3
-  var FLOAT_DURATION = 2500
-  var ROTATE_DURATION = 20000
   var MIN_DISTANCE = 0
   var MAX_DISTANCE = 0
   var TARGET_COUCH_WIDTH = 2.65
@@ -35,8 +32,6 @@
       this.placed = false
       this.revealed = false
       this.baseScale = new THREE.Vector3(1, 1, 1)
-      this._cameraWorldPos = new THREE.Vector3()
-      this._modelWorldPos = new THREE.Vector3()
 
       // Enable soft shadow maps once the renderer is ready
       var sceneEl = this.el.sceneEl
@@ -72,24 +67,17 @@
       var y = this.data.height
 
       this.el.object3D.position.set(x, y, z)
+      this.el.object3D.rotation.set(
+        THREE.MathUtils.degToRad(ROTATION_OFFSET_X),
+        THREE.MathUtils.degToRad(ROTATION_OFFSET_Y),
+        THREE.MathUtils.degToRad(ROTATION_OFFSET_Z),
+        'YXZ'
+      )
 
       // Store base position for animations
       this._baseY = y
       this._posX = x
       this._posZ = z
-
-      // Floating bob
-      this.el.setAttribute('animation__float', {
-        property: 'object3D.position.y',
-        from: y,
-        to: y + 0.18,
-        dir: 'alternate',
-        dur: FLOAT_DURATION,
-        easing: 'easeInOutSine',
-        loop: true,
-      })
-
-      // (no auto-rotation — tick() handles look-at-camera instead)
 
       // Hide until the model is loaded and normalized to real-world couch scale.
       this.el.object3D.scale.set(0.001, 0.001, 0.001)
@@ -103,10 +91,10 @@
       glow.setAttribute('light', {
         type: 'point',
         color: '#dbe8ff',
-        intensity: 1.6,
-        distance: 9,
+        intensity: 1.05,
+        distance: 7,
       })
-      glow.setAttribute('position', '0 0.9 1.1')
+      glow.setAttribute('position', '0 0.75 0.95')
       this.el.appendChild(glow)
     },
 
@@ -178,7 +166,7 @@
           if (!material) return
 
           if (material.color) {
-            material.color.multiplyScalar(1.22)
+            material.color.multiplyScalar(1.12)
           }
 
           if (material.metalness !== undefined) {
@@ -186,12 +174,12 @@
           }
 
           if (material.roughness !== undefined) {
-            material.roughness = 0.72
+            material.roughness = 0.76
           }
 
           if (material.emissive) {
-            material.emissive.setRGB(0.05, 0.08, 0.14)
-            material.emissiveIntensity = 0.22
+            material.emissive.setRGB(0.03, 0.05, 0.08)
+            material.emissiveIntensity = 0.12
           }
 
           if (material.envMapIntensity !== undefined) {
@@ -242,34 +230,6 @@
 
       this.el.removeAttribute('animation__highlight')
       this.el.object3D.scale.copy(this.baseScale)
-    },
-
-    tick: function () {
-      if (!this.revealed) return
-
-      try {
-        // Billboard: rotate Y so the couch always faces the camera.
-        // We use euler + setFromEuler to avoid touching quaternion internals
-        // that 8th Wall SLAM expects to own on the camera object.
-        var camera = this.el.sceneEl.camera
-        if (!camera) return
-
-        camera.getWorldPosition(this._cameraWorldPos)
-
-        var myPos = this.el.object3D.getWorldPosition(this._modelWorldPos)
-        var dx = this._cameraWorldPos.x - myPos.x
-        var dz = this._cameraWorldPos.z - myPos.z
-        var lookY = Math.atan2(dx, dz)
-
-        this.el.object3D.rotation.set(
-          THREE.MathUtils.degToRad(ROTATION_OFFSET_X),
-          lookY + THREE.MathUtils.degToRad(ROTATION_OFFSET_Y),
-          THREE.MathUtils.degToRad(ROTATION_OFFSET_Z),
-          'YXZ'
-        )
-      } catch (e) {
-        // Swallow errors silently — XR init race conditions
-      }
     },
   }
 

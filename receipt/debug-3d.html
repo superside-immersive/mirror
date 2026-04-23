@@ -44,7 +44,7 @@
 <body>
   <div id="hud">
     <h1>Couch 3D Debug</h1>
-    <p>Standalone scene without AR. The couch uses rotation offsets X 0, Y -82, Z -57 and a brighter lighting rig so you can inspect shading and silhouette.</p>
+    <p>Standalone scene without AR. The couch uses rotation offsets X 0, Y -82, Z -57 and a softer lighting rig so you can inspect shading and silhouette.</p>
   </div>
 
   <script>
@@ -69,12 +69,12 @@
             var materials = Array.isArray(node.material) ? node.material : [node.material]
             materials.forEach(function (material) {
               if (!material) return
-              if (material.color) material.color.multiplyScalar(1.25)
+              if (material.color) material.color.multiplyScalar(1.12)
               if (material.metalness !== undefined) material.metalness = 0
-              if (material.roughness !== undefined) material.roughness = 0.68
+              if (material.roughness !== undefined) material.roughness = 0.76
               if (material.emissive) {
-                material.emissive.setRGB(0.05, 0.08, 0.12)
-                material.emissiveIntensity = 0.2
+                material.emissive.setRGB(0.03, 0.05, 0.08)
+                material.emissiveIntensity = 0.12
               }
               material.needsUpdate = true
             })
@@ -90,11 +90,6 @@
           this.el.object3D.scale.copy(this.baseScale)
           this.el.object3D.rotation.set(THREE.MathUtils.degToRad(0), THREE.MathUtils.degToRad(-82), THREE.MathUtils.degToRad(-57), 'YXZ')
         },
-
-        tick: function (time) {
-          if (!this.baseScale) return
-          this.el.object3D.rotation.y = THREE.MathUtils.degToRad(-82) + time * 0.00035
-        },
       })
     })()
   </script>
@@ -105,17 +100,17 @@
     background="color: #dbe6f3">
 
     <a-assets>
-      <a-asset-item id="couchModel" src="assets/couch2.glb"></a-asset-item>
+      <a-asset-item id="couchModel" src="assets/couch3.glb"></a-asset-item>
     </a-assets>
 
     <a-camera position="0 1.65 5.4" look-controls="enabled: false" wasd-controls="enabled: false"></a-camera>
 
     <a-plane rotation="-90 0 0" position="0 -1.25 0" width="20" height="20" color="#eef3f9" shadow="receive: true"></a-plane>
-    <a-entity light="type: ambient; intensity: 0.95"></a-entity>
-    <a-entity light="type: hemisphere; color: #ffffff; groundColor: #88a2c1; intensity: 1.25"></a-entity>
-    <a-entity light="type: directional; color: #fff6e8; intensity: 2.2; castShadow: true; shadowMapWidth: 2048; shadowMapHeight: 2048; shadowCameraTop: 8; shadowCameraBottom: -8; shadowCameraLeft: -8; shadowCameraRight: 8; shadowBias: -0.001" position="3 7 5"></a-entity>
-    <a-entity light="type: directional; color: #d8e6ff; intensity: 1.35" position="-4 4 3"></a-entity>
-    <a-entity light="type: point; color: #ffffff; intensity: 1.8; distance: 12" position="0 2.5 2"></a-entity>
+    <a-entity light="type: ambient; intensity: 0.58"></a-entity>
+    <a-entity light="type: hemisphere; color: #ffffff; groundColor: #88a2c1; intensity: 0.86"></a-entity>
+    <a-entity light="type: directional; color: #fff6e8; intensity: 1.45; castShadow: true; shadowMapWidth: 2048; shadowMapHeight: 2048; shadowCameraTop: 8; shadowCameraBottom: -8; shadowCameraLeft: -8; shadowCameraRight: 8; shadowBias: -0.001" position="3 7 5"></a-entity>
+    <a-entity light="type: directional; color: #d8e6ff; intensity: 0.75" position="-4 4 3"></a-entity>
+    <a-entity light="type: point; color: #ffffff; intensity: 0.85; distance: 12" position="0 2.5 2"></a-entity>
 
     <a-entity id="debug-couch" debug-couch gltf-model="#couchModel" position="0 -1.05 0" shadow="cast: true; receive: true"></a-entity>
   </a-scene>

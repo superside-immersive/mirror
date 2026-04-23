@@ -135,7 +135,7 @@
         Place your couch.glb model in the assets/ folder.
         Recommended: optimised GLB, < 2 MB, centered origin.
       -->
-      <a-asset-item id="couchModel" src="assets/couch2.glb"></a-asset-item>
+      <a-asset-item id="couchModel" src="assets/couch3.glb"></a-asset-item>
     </a-assets>
 
     <!-- Camera -->
@@ -164,15 +164,15 @@
 
     <!-- Lighting -->
     <a-entity
-      light="type: directional; intensity: 1.8; castShadow: true; shadowCameraLeft: -12; shadowCameraRight: 12; shadowCameraTop: 12; shadowCameraBottom: -12; shadowCameraFar: 30; shadowMapWidth: 2048; shadowMapHeight: 2048; shadowBias: -0.001"
+      light="type: directional; intensity: 1.35; castShadow: true; shadowCameraLeft: -12; shadowCameraRight: 12; shadowCameraTop: 12; shadowCameraBottom: -12; shadowCameraFar: 30; shadowMapWidth: 2048; shadowMapHeight: 2048; shadowBias: -0.001"
       xrextras-attach="target: camera; offset: 3 10 5"
       position="1 4.3 2.5">
     </a-entity>
 
-    <a-light type="hemisphere" color="#ffffff" groundColor="#6a86a8" intensity="1.15"></a-light>
-    <a-light type="ambient" intensity="0.72"></a-light>
+    <a-light type="hemisphere" color="#ffffff" groundColor="#6a86a8" intensity="0.82"></a-light>
+    <a-light type="ambient" intensity="0.5"></a-light>
     <a-entity
-      light="type: directional; intensity: 0.95; color: #cfe0ff"
+      light="type: directional; intensity: 0.62; color: #cfe0ff"
       xrextras-attach="target: camera; offset: -4 6 7"
       position="-2 3 4">
     </a-entity>
