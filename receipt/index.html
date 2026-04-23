@@ -57,28 +57,19 @@
 
     <!-- Title -->
     <div id="title-block">
-      <p class="eyebrow">AMC COUCH HUNT</p>
       <h1>Find the <span>couch</span></h1>
-      <p class="subtitle">Scan it. Snap it. Show it. Claim it.</p>
     </div>
 
     <!-- CTA: Searching — hidden until camera permissions are granted -->
-    <div id="cta-search" class="cta">
-      <div class="instruction-card">
-        <div class="instruction-step">
-          <span class="step-badge">1</span>
-          <p>Look up and scan the space</p>
-        </div>
-        <div class="instruction-step">
-          <span class="step-badge">2</span>
-          <p>Find the floating couch</p>
-        </div>
-      </div>
-    </div>
+    <div id="cta-search" class="cta"></div>
 
     <!-- CTA: Found → Snap -->
     <div id="cta-found" class="cta">
-      <button id="btn-snap">TAKE PHOTO</button>
+      <p class="capture-prompt">TAKE A PICTURE</p>
+      <button id="btn-snap" aria-label="Take picture">
+        <span class="snap-button-outer"></span>
+        <span class="snap-button-inner"></span>
+      </button>
     </div>
 
     <!-- Found target indicator -->

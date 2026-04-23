@@ -28,7 +28,7 @@
       var snap = document.getElementById('btn-snap')
       if (snap) {
         snap.disabled = true
-        snap.textContent = 'SAVING...'
+        snap.classList.add('is-saving')
       }
 
       this.flash()
@@ -46,7 +46,7 @@
         this.hasCaptured = false
         if (snap) {
           snap.disabled = false
-          snap.textContent = 'TAKE PHOTO'
+          snap.classList.remove('is-saving')
         }
       }
     },

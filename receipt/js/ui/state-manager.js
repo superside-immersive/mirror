@@ -77,7 +77,7 @@
 
     showFound: function () {
       this.els.ctaSearch.classList.remove('active')
-      this.els.titleBlock.style.opacity = '0'
+      this.els.titleBlock.style.opacity = '1'
 
       // Show lock-on indicator
       this.els.foundIndicator.classList.add('active')
