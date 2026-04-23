@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <base href="/receipt/">
+  <title>AMC Couch Debug 3D</title>
+  <script src="external/scripts/8frame-1.5.0.min.js"></script>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      font-family: Inter, system-ui, sans-serif;
+      background: radial-gradient(circle at top, #edf4ff 0%, #d7e2f1 44%, #bcc8d8 100%);
+      color: #133056;
+    }
+
+    #hud {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      z-index: 10;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: 0 16px 40px rgba(18, 37, 66, 0.16);
+      backdrop-filter: blur(10px);
+      max-width: 320px;
+    }
+
+    #hud h1 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+
+    #hud p {
+      margin: 0;
+      line-height: 1.45;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <h1>Couch 3D Debug</h1>
+    <p>Standalone scene without AR. The couch uses rotation offsets X 0, Y -82, Z -57 and a brighter lighting rig so you can inspect shading and silhouette.</p>
+  </div>
+
+  <script>
+    (function () {
+      'use strict'
+
+      AFRAME.registerComponent('debug-couch', {
+        init: function () {
+          this.baseScale = new THREE.Vector3(1, 1, 1)
+          this.el.addEventListener('model-loaded', this.onModelLoaded.bind(this))
+        },
+
+        onModelLoaded: function () {
+          var mesh = this.el.getObject3D('mesh')
+          if (!mesh) return
+
+          mesh.traverse(function (node) {
+            if (!node.isMesh) return
+            node.castShadow = true
+            node.receiveShadow = true
+
+            var materials = Array.isArray(node.material) ? node.material : [node.material]
+            materials.forEach(function (material) {
+              if (!material) return
+              if (material.color) material.color.multiplyScalar(1.25)
+              if (material.metalness !== undefined) material.metalness = 0
+              if (material.roughness !== undefined) material.roughness = 0.68
+              if (material.emissive) {
+                material.emissive.setRGB(0.05, 0.08, 0.12)
+                material.emissiveIntensity = 0.2
+              }
+              material.needsUpdate = true
+            })
+          })
+
+          var box = new THREE.Box3().setFromObject(mesh)
+          var size = new THREE.Vector3()
+          box.getSize(size)
+          var maxSide = Math.max(size.x, size.y, size.z) || 1
+          var uniformScale = 2.8 / maxSide
+
+          this.baseScale.setScalar(uniformScale)
+          this.el.object3D.scale.copy(this.baseScale)
+          this.el.object3D.rotation.set(THREE.MathUtils.degToRad(0), THREE.MathUtils.degToRad(-82), THREE.MathUtils.degToRad(-57), 'YXZ')
+        },
+
+        tick: function (time) {
+          if (!this.baseScale) return
+          this.el.object3D.rotation.y = THREE.MathUtils.degToRad(-82) + time * 0.00035
+        },
+      })
+    })()
+  </script>
+
+  <a-scene
+    renderer="colorManagement: true; physicallyCorrectLights: true"
+    shadow="type: pcfsoft"
+    background="color: #dbe6f3">
+
+    <a-assets>
+      <a-asset-item id="couchModel" src="assets/couch2.glb"></a-asset-item>
+    </a-assets>
+
+    <a-camera position="0 1.65 5.4" look-controls="enabled: false" wasd-controls="enabled: false"></a-camera>
+
+    <a-plane rotation="-90 0 0" position="0 -1.25 0" width="20" height="20" color="#eef3f9" shadow="receive: true"></a-plane>
+    <a-entity light="type: ambient; intensity: 0.95"></a-entity>
+    <a-entity light="type: hemisphere; color: #ffffff; groundColor: #88a2c1; intensity: 1.25"></a-entity>
+    <a-entity light="type: directional; color: #fff6e8; intensity: 2.2; castShadow: true; shadowMapWidth: 2048; shadowMapHeight: 2048; shadowCameraTop: 8; shadowCameraBottom: -8; shadowCameraLeft: -8; shadowCameraRight: 8; shadowBias: -0.001" position="3 7 5"></a-entity>
+    <a-entity light="type: directional; color: #d8e6ff; intensity: 1.35" position="-4 4 3"></a-entity>
+    <a-entity light="type: point; color: #ffffff; intensity: 1.8; distance: 12" position="0 2.5 2"></a-entity>
+
+    <a-entity id="debug-couch" debug-couch gltf-model="#couchModel" position="0 -1.05 0" shadow="cast: true; receive: true"></a-entity>
+  </a-scene>
+</body>
+</html>

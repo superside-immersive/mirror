@@ -15,6 +15,9 @@
   var TARGET_COUCH_HEIGHT = 1.15
   var TARGET_COUCH_DEPTH = 1.1
   var TARGET_Y = 3
+  var ROTATION_OFFSET_X = 0
+  var ROTATION_OFFSET_Y = -82
+  var ROTATION_OFFSET_Z = -57
 
   window.AMC = window.AMC || {}
 
@@ -32,7 +35,8 @@
       this.placed = false
       this.revealed = false
       this.baseScale = new THREE.Vector3(1, 1, 1)
-      this._cameraWorldPos = new THREE.Vector3() // pre-alloc for tick
+      this._cameraWorldPos = new THREE.Vector3()
+      this._modelWorldPos = new THREE.Vector3()
 
       // Enable soft shadow maps once the renderer is ready
       var sceneEl = this.el.sceneEl
@@ -98,11 +102,11 @@
       var glow = document.createElement('a-entity')
       glow.setAttribute('light', {
         type: 'point',
-        color: '#028FFF',
-        intensity: 0.3,
-        distance: 6,
+        color: '#dbe8ff',
+        intensity: 1.6,
+        distance: 9,
       })
-      glow.setAttribute('position', '0 -0.5 0')
+      glow.setAttribute('position', '0 0.9 1.1')
       this.el.appendChild(glow)
     },
 
@@ -110,15 +114,7 @@
       var mesh = this.el.getObject3D('mesh')
       if (!mesh) return
 
-      mesh.traverse(function (node) {
-        if (node.isMesh) {
-          node.castShadow = true
-          node.receiveShadow = true
-          if (node.material) {
-            node.material.needsUpdate = true
-          }
-        }
-      })
+      this.prepareMaterials(mesh)
 
       this.baseScale.copy(this.fitModelToCouchSize(mesh))
 
@@ -167,6 +163,44 @@
       var uniformScale = Math.max(widthScale, heightScale, depthScale)
 
       return new THREE.Vector3(uniformScale, uniformScale, uniformScale)
+    },
+
+    prepareMaterials: function (mesh) {
+      mesh.traverse(function (node) {
+        if (!node.isMesh) return
+
+        node.castShadow = true
+        node.receiveShadow = true
+
+        var materials = Array.isArray(node.material) ? node.material : [node.material]
+
+        materials.forEach(function (material) {
+          if (!material) return
+
+          if (material.color) {
+            material.color.multiplyScalar(1.22)
+          }
+
+          if (material.metalness !== undefined) {
+            material.metalness = 0
+          }
+
+          if (material.roughness !== undefined) {
+            material.roughness = 0.72
+          }
+
+          if (material.emissive) {
+            material.emissive.setRGB(0.05, 0.08, 0.14)
+            material.emissiveIntensity = 0.22
+          }
+
+          if (material.envMapIntensity !== undefined) {
+            material.envMapIntensity = 1.1
+          }
+
+          material.needsUpdate = true
+        })
+      })
     },
 
     highlight: function () {
@@ -222,20 +256,15 @@
 
         camera.getWorldPosition(this._cameraWorldPos)
 
-        var myPos = this.el.object3D.getWorldPosition(new THREE.Vector3())
+        var myPos = this.el.object3D.getWorldPosition(this._modelWorldPos)
         var dx = this._cameraWorldPos.x - myPos.x
         var dz = this._cameraWorldPos.z - myPos.z
         var lookY = Math.atan2(dx, dz)
 
-        // Apply rotation offsets from dev sliders
-        var off = (window.AMC && window.AMC.couchRotOffset) || { x: 0, y: 0, z: 0 }
-
-        // Set euler on the object3D — safe because this is the couch entity,
-        // not the camera; 8th Wall only drives the camera world transform.
         this.el.object3D.rotation.set(
-          THREE.MathUtils.degToRad(off.x),
-          lookY + THREE.MathUtils.degToRad(off.y),
-          THREE.MathUtils.degToRad(off.z),
+          THREE.MathUtils.degToRad(ROTATION_OFFSET_X),
+          lookY + THREE.MathUtils.degToRad(ROTATION_OFFSET_Y),
+          THREE.MathUtils.degToRad(ROTATION_OFFSET_Z),
           'YXZ'
         )
       } catch (e) {
