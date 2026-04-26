@@ -6,6 +6,8 @@
 (function () {
   'use strict'
 
+  var xrRuntimeStarted = false
+
   // Register A-Frame components
   AFRAME.registerComponent('couch-placer', AMC.couchPlacerComponent)
   AFRAME.registerComponent('couch-detector', AMC.couchDetectorComponent)
@@ -36,7 +38,37 @@
   }
 
   function boot() {
+    initXRRuntime()
     AMC.StateManager.init()
     AMC.ScreenCapture.init()
+  }
+
+  function initXRRuntime() {
+    var startRuntime = function () {
+      if (xrRuntimeStarted) return
+
+      var scene = document.querySelector('a-scene')
+      if (!scene) return
+      if (!window.XR8 || !window.XR8.XrController) return
+
+      xrRuntimeStarted = true
+
+      // Ensure open-source SLAM world tracking is enabled before starting reality.
+      window.XR8.XrController.configure({ disableWorldTracking: false })
+
+      if (scene.hasLoaded) {
+        scene.emit('runreality')
+      } else {
+        scene.addEventListener('loaded', function () {
+          scene.emit('runreality')
+        }, { once: true })
+      }
+    }
+
+    if (window.XR8) {
+      startRuntime()
+    } else {
+      window.addEventListener('xrloaded', startRuntime, { once: true })
+    }
   }
 })()

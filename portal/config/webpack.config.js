@@ -98,6 +98,11 @@ const config = {
           to: path.join(distPath, 'assets', 'common'),
           noErrorOnMissing: true,
         },
+        {
+          from: path.join(rootPath, 'capture-ui.js'),
+          to: path.join(distPath, 'capture-ui.js'),
+          noErrorOnMissing: true,
+        },
       ],
     }),
   ],

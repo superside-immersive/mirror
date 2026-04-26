@@ -264,7 +264,7 @@ function showGestureCta() {
 
 function showGestureIntroCopy() {
   showTextWithOverlay(
-    'WITHOUT <span class="text-accent">DATA,</span>',
+    'WITHOUT <span class="text-accent">DATA</span>',
     'Brands struggle to attract the right attention.'
   );
 }
@@ -309,10 +309,7 @@ function triggerIdle() {
   playSceneTransition(() => {
     setBackground('bg-idle');
   }, () => {
-    showTextWithOverlay(
-      'THE POWER OF <span class="text-accent">ATTRACTION.</span>',
-      'Step in to see how AMC\'s data magnetizes your ideal buyer.'
-    );
+    hideText(0);
   });
 }
 

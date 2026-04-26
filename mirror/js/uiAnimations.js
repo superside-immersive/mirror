@@ -174,15 +174,18 @@ export function animateHarmony(selectedOptionId) {
         button.classList.toggle('selected', isSelected);
         button.classList.toggle('dimmed', !isSelected);
 
+        const amcGlow = 'rgba(0, 62, 126, 0.55)';
+        const amcBorder = 'rgba(0, 62, 126, 0.95)';
+        const amcBg = '#003E7E';
         gsap.to(button, {
           autoAlpha: isSelected ? 1 : 0.18,
           scale: isSelected ? 1.05 : 0.96,
           y: isSelected ? -4 : 0,
           boxShadow: isSelected
-            ? `0 0 54px ${option.colorTheme.glow}, inset 0 0 18px ${option.colorTheme.glow}`
+            ? `0 0 54px ${amcGlow}, inset 0 0 18px ${amcGlow}`
             : '0 0 0 rgba(0,0,0,0)',
-          borderColor: isSelected ? option.colorTheme.border : 'rgba(255,255,255,0.08)',
-          background: isSelected ? option.colorTheme.background : 'linear-gradient(160deg, rgba(0, 62, 126, 0.18), rgba(0, 13, 26, 0.68))',
+          borderColor: isSelected ? amcBorder : 'rgba(255,255,255,0.08)',
+          background: amcBg,
           duration: 0.82,
           ease: 'power3.out',
         });

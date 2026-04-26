@@ -5,3 +5,5 @@ portal/.git.embedded.backup/
 portal/dist/
 receipt/.git.embedded.backup/
 receipt/.cert/
+.vercel
+.env*.local

@@ -663,7 +663,7 @@ body[data-ui-phase='harmony'] #sub-headline {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--amc-white);
-  background: linear-gradient(160deg, rgba(0, 26, 54, 0.86), rgba(0, 13, 26, 0.92));
+  background: var(--amc-navy);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.38);
@@ -696,7 +696,7 @@ body[data-ui-phase='harmony'] #sub-headline {
 }
 
 .brand-kraft {
-  background: linear-gradient(160deg, rgba(0, 26, 54, 0.84), rgba(0, 62, 126, 0.3));
+  background: var(--amc-navy);
 }
 
 .brand-kraft::after {
@@ -704,7 +704,7 @@ body[data-ui-phase='harmony'] #sub-headline {
 }
 
 .brand-mondelez {
-  background: linear-gradient(160deg, rgba(0, 13, 26, 0.94), rgba(0, 62, 126, 0.22));
+  background: var(--amc-navy);
 }
 
 .brand-mondelez::after {
@@ -712,7 +712,7 @@ body[data-ui-phase='harmony'] #sub-headline {
 }
 
 .brand-coca {
-  background: linear-gradient(160deg, rgba(0, 26, 54, 0.88), rgba(0, 62, 126, 0.28));
+  background: var(--amc-navy);
 }
 
 .brand-coca::after {
